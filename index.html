@@ -160,10 +160,8 @@ const KPI_QUEUE  = 180;
 
 let fleets = [];
 let photoCache = { arrival:null };
-// Untuk alarm (menyimpan ID yang sudah alarm agar tidak tumpang tindih)
 let alertedFleets = new Set();
 
-// Generator Suara Alarm Bawaan Browser (Bebas dari link eksternal rusak)
 function playAlarm(level) {
   try {
     const ctx = new (window.AudioContext || window.webkitAudioContext)();
@@ -172,16 +170,16 @@ function playAlarm(level) {
     osc.connect(gain);
     gain.connect(ctx.destination);
     
-    if(level === 'warning') { // Kuning / Mendekati
+    if(level === 'warning') { 
       osc.frequency.value = 400; osc.type = 'sine';
       gain.gain.setValueAtTime(0.1, ctx.currentTime);
       osc.start(); osc.stop(ctx.currentTime + 0.5);
-    } else { // Merah / Overdue
+    } else { 
       osc.frequency.value = 800; osc.type = 'square';
       gain.gain.setValueAtTime(0.3, ctx.currentTime);
       osc.start(); osc.stop(ctx.currentTime + 1.0);
     }
-  } catch(e) {} // Abaikan jika browser tidak support autoplay
+  } catch(e) {} 
 }
 
 function getSize(type) { for (const [sz, arr] of Object.entries(FLEET_SIZES)) { if (arr.includes(type)) return sz; } return 'small'; }
@@ -208,6 +206,12 @@ function tickClock() {
   if (sdt) sdt.textContent = `Waktu Sistem: ${hh}:${mm}`; 
 }
 setInterval(tickClock, 1000); tickClock();
+
+// FUNGSI INI DITAMBAHKAN UNTUK MEMUNCULKAN DATA
+function renderAll() {
+  renderChecker();
+  renderTV();
+}
 
 function setView(v) { 
   document.querySelectorAll('.view').forEach(el => el.classList.remove('active')); 
@@ -239,13 +243,18 @@ async function fetchDatabase() {
   try {
     const response = await fetch(API_URL);
     const data = await response.json();
+    
+    // Pastikan key (misal: row.securityname, row.status) sesuai dengan output Google Apps Script Anda (biasanya huruf kecil semua)
     fleets = data.map(row => ({
       id: row.id, secName: row.securityname, driverName: row.driver, plateNumber: row.plate, fleetType: row.type, fleetSize: row.size,
       arrivalTime: row.arrivaltime, checkerName: row.checkername, status: row.status,
       unloadStartTime: row.unloadstart || null, unloadEndTime: row.unloadend || null
     }));
-    renderAll();
-  } catch (e) { console.error("Koneksi ke Sheet terputus."); }
+    
+    renderAll(); // Memanggil render yang tadi ditambahkan
+  } catch (e) { 
+    console.error("Koneksi ke Sheet terputus.", e); 
+  }
 }
 
 async function submitArrival() {
@@ -271,36 +280,36 @@ async function submitArrival() {
   } catch(e) { toast('❌ Gagal Simpan!','err'); }
 }
 
-// Fitur Interaksi Checker Dinamis
 function renderChecker() {
   const el = document.getElementById('ck-list'); if(!el) return;
-  const list = fleets.filter(f => f.status !== 'done');
-  if(!list.length) { el.innerHTML = '<div class="empty">Tidak ada armada di area.</div>'; return; }
+  const list = fleets.filter(f => f.status && f.status.toLowerCase() !== 'done');
+  if(!list.length) { el.innerHTML = '<div class="empty" style="text-align:center; padding: 20px; color: var(--text2);">Tidak ada armada di area.</div>'; return; }
   
   el.innerHTML = list.map(f => {
     let content = '';
-    if(f.status === 'queuing') {
+    const status = f.status ? f.status.toLowerCase() : '';
+    if(status === 'queuing') {
       content = `
         <div class="form-group mt-10"><input type="text" id="cn-${f.id}" class="form-input" placeholder="Nama Anda (Checker)..."></div>
-        <div class="photo-capture mt-10" style="height:100px">
+        <div class="photo-capture mt-10" style="height:100px; margin-top:10px;">
           <input type="file" accept="image/*" capture="environment" onchange="handlePhoto('start-${f.id}',event)">
           <div class="photo-placeholder" id="pp-start-${f.id}"><span>📷</span><span class="label">Foto Pintu Dibuka</span></div>
           <img class="preview-img" id="pi-start-${f.id}" />
         </div>
-        <button class="btn btn-primary mt-10" onclick="startUnloading('${f.id}')">🔄 MULAI UNLOAD</button>
+        <button class="btn btn-primary mt-10" style="margin-top:10px;" onclick="startUnloading('${f.id}')">🔄 MULAI UNLOAD</button>
       `;
-    } else if(f.status === 'unloading') {
+    } else if(status === 'unloading') {
       content = `
-        <div class="mt-10" style="font-size:13px; color:var(--amber)">Checker: ${f.checkerName}</div>
-        <div class="photo-capture mt-10" style="height:100px">
+        <div class="mt-10" style="font-size:13px; color:var(--amber); margin-top:10px;">Checker: ${f.checkerName || '-'}</div>
+        <div class="photo-capture mt-10" style="height:100px; margin-top:10px;">
           <input type="file" accept="image/*" capture="environment" onchange="handlePhoto('end-${f.id}',event)">
           <div class="photo-placeholder" id="pp-end-${f.id}"><span>📷</span><span class="label">Foto Armada Kosong</span></div>
           <img class="preview-img" id="pi-end-${f.id}" />
         </div>
-        <button class="btn btn-success mt-10" onclick="finishUnloading('${f.id}')">✅ SELESAI UNLOAD</button>
+        <button class="btn btn-success mt-10" style="margin-top:10px;" onclick="finishUnloading('${f.id}')">✅ SELESAI UNLOAD</button>
       `;
     }
-    return `<div class="fleet-card"><div class="fleet-card-header"><div><div class="fleet-name">${f.plateNumber}</div><div class="fleet-meta">${f.fleetType} · Tiba: ${fmtHM(f.arrivalTime)}</div></div><span class="status-badge s-${f.status}">${f.status}</span></div>${content}</div>`;
+    return `<div class="fleet-card"><div class="fleet-card-header"><div><div class="fleet-name">${f.plateNumber || '-'}</div><div class="fleet-meta">${f.fleetType || '-'} · Tiba: ${f.arrivalTime ? fmtHM(f.arrivalTime) : '-'}</div></div><span class="status-badge s-${status}">${status}</span></div>${content}</div>`;
   }).join('');
 }
 
@@ -322,7 +331,7 @@ async function finishUnloading(id) {
 function getKPIStatus(elapsedTime, maxTime) {
   const rem = maxTime - elapsedTime;
   if(rem < 0) return { cls: 'c-red', txt: `Lewat ${Math.abs(rem)}m`, isCrit: 2 };
-  if(rem <= 5) return { cls: 'c-red', txt: `Sisa ${rem}m`, isCrit: 1 }; // Mendekati 5 menit
+  if(rem <= 5) return { cls: 'c-red', txt: `Sisa ${rem}m`, isCrit: 1 };
   if(rem <= 30 && maxTime === 180) return { cls: 'c-yellow', txt: `Sisa ${rem}m`, isCrit: 0 };
   if(rem <= 10 && maxTime < 180) return { cls: 'c-yellow', txt: `Sisa ${rem}m`, isCrit: 0 };
   return { cls: 'c-green', txt: `Sisa ${rem}m`, isCrit: 0 };
@@ -330,65 +339,60 @@ function getKPIStatus(elapsedTime, maxTime) {
 
 function renderTV() {
   const tbody = document.getElementById('tv-tbody'); if (!tbody) return;
-  const activeFleets = fleets.filter(f => f.status !== 'done');
+  const activeFleets = fleets.filter(f => f.status && f.status.toLowerCase() !== 'done');
   
   let violations = 0;
   let playHighAlarm = false;
   let playLowAlarm = false;
 
-  // Analisis Performa & Alarm
   const enrichedFleets = activeFleets.map(f => {
-    // Antri berhenti saat mulai unload. Jika belum mulai, hitung terus sampai saat ini.
-    const qDur = elapsed(f.arrivalTime, f.unloadStartTime);
+    const status = f.status ? f.status.toLowerCase() : '';
+    const qDur = f.arrivalTime ? elapsed(f.arrivalTime, f.unloadStartTime) : 0;
     const qStat = getKPIStatus(qDur, KPI_QUEUE);
     
     let uDur = 0; let uStat = {cls:'', txt:'-', isCrit:0};
-    if (f.status === 'unloading') {
-      uDur = elapsed(f.unloadStartTime, null);
-      uStat = getKPIStatus(uDur, KPI_UNLOAD[f.fleetSize]);
+    if (status === 'unloading') {
+      uDur = f.unloadStartTime ? elapsed(f.unloadStartTime, null) : 0;
+      uStat = getKPIStatus(uDur, KPI_UNLOAD[f.fleetSize] || 60);
     }
     
-    // Logika Alarm Bip Bip
     if (qStat.isCrit === 2 || uStat.isCrit === 2) { violations++; playHighAlarm = true; }
     else if (qStat.isCrit === 1 || uStat.isCrit === 1) { playLowAlarm = true; }
     
-    // Skor Prioritas
     f.priorityScore = Math.max(qStat.isCrit, uStat.isCrit);
     f.qDur = qDur; f.qStat = qStat; f.uDur = uDur; f.uStat = uStat;
     return f;
   });
 
-  // Eksekusi Bunyi Alarm
   if (playHighAlarm) playAlarm('critical');
   else if (playLowAlarm) playAlarm('warning');
 
-  // Urutkan (Lewat KPI paling atas, lalu urut kedatangan)
   enrichedFleets.sort((a, b) => {
     if (b.priorityScore !== a.priorityScore) return b.priorityScore - a.priorityScore;
-    return new Date(a.arrivalTime) - new Date(b.arrivalTime);
+    return new Date(a.arrivalTime || 0) - new Date(b.arrivalTime || 0);
   });
 
   document.getElementById('kc-total').textContent = enrichedFleets.length;
-  document.getElementById('kc-queuing').textContent = enrichedFleets.filter(f=>f.status==='queuing').length;
-  document.getElementById('kc-unloading').textContent = enrichedFleets.filter(f=>f.status==='unloading').length;
+  document.getElementById('kc-queuing').textContent = enrichedFleets.filter(f=> f.status && f.status.toLowerCase() ==='queuing').length;
+  document.getElementById('kc-unloading').textContent = enrichedFleets.filter(f=> f.status && f.status.toLowerCase() ==='unloading').length;
   document.getElementById('kc-violations').textContent = violations;
 
-  if (!enrichedFleets.length) { tbody.innerHTML = `<tr><td colspan="6"><div class="empty">Seluruh operasional clear.</div></td></tr>`; return; }
+  if (!enrichedFleets.length) { tbody.innerHTML = `<tr><td colspan="6"><div class="empty" style="text-align:center; padding: 20px;">Seluruh operasional clear.</div></td></tr>`; return; }
   
   tbody.innerHTML = enrichedFleets.map((f, i) => {
-    const uMax = f.status==='unloading' ? KPI_UNLOAD[f.fleetSize] : '-';
+    const status = f.status ? f.status.toLowerCase() : '';
+    const uMax = status ==='unloading' ? (KPI_UNLOAD[f.fleetSize] || '-') : '-';
     return `<tr>
       <td>${i+1}</td>
       <td>Sec: <b>${f.secName || '-'}</b><br>Chk: <b>${f.checkerName || '-'}</b></td>
-      <td><b>${f.plateNumber}</b><br><small>${f.fleetType}</small></td>
-      <td><span class="status-badge s-${f.status}">${f.status}</span></td>
+      <td><b>${f.plateNumber || '-'}</b><br><small>${f.fleetType || '-'}</small></td>
+      <td><span class="status-badge s-${status}">${status}</span></td>
       <td class="kpi-cell ${f.qStat.cls}">${f.qDur}m / 180m<br><small>${f.qStat.txt}</small></td>
-      <td class="kpi-cell ${f.uStat.cls}">${f.status==='unloading' ? `${f.uDur}m / ${uMax}m<br><small>${f.uStat.txt}</small>` : 'Menunggu'}</td>
+      <td class="kpi-cell ${f.uStat.cls}">${status==='unloading' ? `${f.uDur}m / ${uMax}m<br><small>${f.uStat.txt}</small>` : 'Menunggu'}</td>
     </tr>`;
   }).join('');
 }
 
-// Fitur Sortir Klik Tabel (Sederhana)
 function sortTable(n) {
   var table, rows, switching, i, x, y, shouldSwitch, dir, switchcount = 0;
   table = document.getElementById("mainTable");
