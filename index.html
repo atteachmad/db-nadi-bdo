@@ -56,6 +56,10 @@
     .toast { position:fixed; bottom:76px; left:50%; transform:translateX(-50%) translateY(100px); padding:12px 24px; border-radius:30px; font-family:'Rajdhani',sans-serif; font-size:15px; font-weight:700; z-index:400; transition:transform 0.3s; color:#fff; }
     .toast.show { transform:translateX(-50%) translateY(0); }
     .toast-ok { background:var(--green); } .toast-err { background:var(--red); }
+    
+    /* Tambahan style untuk kotak filter */
+    .filter-box { display: flex; gap: 10px; margin-bottom: 15px; }
+    .filter-box .form-select { flex: 1; }
   </style>
 </head>
 <body>
@@ -106,6 +110,17 @@
   <div class="mobile-container">
     <div class="section-title">📋 Panel Checker</div>
     <div style="font-size: 13px; color: var(--text2); margin-bottom: 15px;">Daftar armada yang berada di area loading dock. Silakan mulai proses atau selesaikan.</div>
+    
+    <div class="filter-box">
+      <select class="form-select" id="filter-status" onchange="updateCheckerFilter()">
+        <option value="all">🚦 Semua Task</option>
+        <option value="queuing">🔄 Mulai Unloading (Antri)</option>
+        <option value="unloading">✅ Selesai Unloading (Proses)</option>
+      </select>
+    </div>
+    <div class="form-group" style="margin-bottom: 20px;">
+      <input type="text" class="form-input" id="search-fleet" placeholder="🔍 Cari Nopol atau Nama Supir..." onkeyup="updateCheckerFilter()" />
+    </div>
     <div id="ck-list"></div>
   </div>
 </div>
@@ -161,6 +176,10 @@ const KPI_QUEUE  = 180;
 let fleets = [];
 let photoCache = { arrival:null };
 let alertedFleets = new Set();
+
+// Variabel untuk menyimpan filter status pencarian checker
+let checkerSearchTerm = '';
+let checkerStatusFilter = 'all';
 
 function playAlarm(level) {
   try {
@@ -280,10 +299,33 @@ async function submitArrival() {
   } catch(e) { toast('❌ Gagal Simpan!','err'); }
 }
 
+// Fungsi update filter saat petugas mengetik atau memilih dropdown
+function updateCheckerFilter() {
+  checkerSearchTerm = document.getElementById('search-fleet').value.toLowerCase().trim();
+  checkerStatusFilter = document.getElementById('filter-status').value;
+  renderChecker();
+}
+
 function renderChecker() {
   const el = document.getElementById('ck-list'); if(!el) return;
-  const list = fleets.filter(f => f.status && f.status.toLowerCase() !== 'done');
-  if(!list.length) { el.innerHTML = '<div class="empty" style="text-align:center; padding: 20px; color: var(--text2);">Tidak ada armada di area.</div>'; return; }
+  
+  // 1. Ambil list awal (yang belum selesai / done)
+  let list = fleets.filter(f => f.status && f.status.toLowerCase() !== 'done');
+  
+  // 2. Terapkan Filter Status
+  if (checkerStatusFilter !== 'all') {
+    list = list.filter(f => f.status.toLowerCase() === checkerStatusFilter);
+  }
+  
+  // 3. Terapkan Filter Pencarian (Plat atau Nama Supir)
+  if (checkerSearchTerm !== '') {
+    list = list.filter(f => 
+      (f.plateNumber && f.plateNumber.toLowerCase().includes(checkerSearchTerm)) ||
+      (f.driverName && f.driverName.toLowerCase().includes(checkerSearchTerm))
+    );
+  }
+
+  if(!list.length) { el.innerHTML = '<div class="empty" style="text-align:center; padding: 20px; color: var(--text2);">Tidak ada armada yang sesuai dengan filter/pencarian.</div>'; return; }
   
   el.innerHTML = list.map(f => {
     let content = '';
@@ -309,7 +351,8 @@ function renderChecker() {
         <button class="btn btn-success mt-10" style="margin-top:10px;" onclick="finishUnloading('${f.id}')">✅ SELESAI UNLOAD</button>
       `;
     }
-    return `<div class="fleet-card"><div class="fleet-card-header"><div><div class="fleet-name">${f.plateNumber || '-'}</div><div class="fleet-meta">${f.fleetType || '-'} · Tiba: ${f.arrivalTime ? fmtHM(f.arrivalTime) : '-'}</div></div><span class="status-badge s-${status}">${status}</span></div>${content}</div>`;
+    // Ditambahkan info "Supir: {Nama}" agar saat dicarikan, petugas mengerti kenapa card tersebut muncul
+    return `<div class="fleet-card"><div class="fleet-card-header"><div><div class="fleet-name">${f.plateNumber || '-'}</div><div class="fleet-meta">${f.fleetType || '-'} · Supir: ${f.driverName || '-'} · Tiba: ${f.arrivalTime ? fmtHM(f.arrivalTime) : '-'}</div></div><span class="status-badge s-${status}">${status}</span></div>${content}</div>`;
   }).join('');
 }
 
