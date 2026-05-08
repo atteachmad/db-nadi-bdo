@@ -37,6 +37,7 @@
     .tv-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:22px; padding-bottom:16px; border-bottom:1px solid var(--border); flex-wrap: wrap; }
     .tv-branding { display:flex; align-items:center; gap:14px; }
     .tv-main-title { font-family:'Rajdhani',sans-serif; font-size:20px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color: var(--amber); }
+    .tv-subtitle { font-family:'Nunito',sans-serif; font-size:11px; font-weight:600; color:var(--text2); text-transform:uppercase; letter-spacing:0.5px; margin-top:-2px; }
     .tv-clock-wrap { text-align: right; }
     .tv-clock-time { font-family:'IBM Plex Mono',monospace; font-size:38px; font-weight:600; color:var(--amber); }
     .tv-clock-date { font-family:'Nunito',sans-serif; font-size:13px; font-weight:600; color:var(--text2); margin-top:-4px; }
@@ -57,7 +58,6 @@
     .toast.show { transform:translateX(-50%) translateY(0); }
     .toast-ok { background:var(--green); } .toast-err { background:var(--red); }
     
-    /* Tambahan style untuk kotak filter */
     .filter-box { display: flex; gap: 10px; margin-bottom: 15px; }
     .filter-box .form-select { flex: 1; }
   </style>
@@ -130,7 +130,10 @@
     <div class="tv-header">
       <div class="tv-branding">
         <img src="logo-nadi.png" alt="NADI Logo" style="height: 40px; border-radius: 4px;"> 
-        <div class="tv-main-title">DB-NADI BDO</div>
+        <div>
+          <div class="tv-main-title">DB-NADI BDO</div>
+          <div class="tv-subtitle">Antrian & Unloading - Real Time</div>
+        </div>
       </div>
       <div class="tv-clock-wrap">
         <div class="tv-clock-time" id="tv-time">--:--:--</div>
@@ -174,10 +177,9 @@ const KPI_UNLOAD = { small:20, medium:60, large:120 };
 const KPI_QUEUE  = 180; 
 
 let fleets = [];
-let photoCache = { arrival:null };
+let photoCache = {};
 let alertedFleets = new Set();
 
-// Variabel untuk menyimpan filter status pencarian checker
 let checkerSearchTerm = '';
 let checkerStatusFilter = 'all';
 
@@ -226,7 +228,6 @@ function tickClock() {
 }
 setInterval(tickClock, 1000); tickClock();
 
-// FUNGSI INI DITAMBAHKAN UNTUK MEMUNCULKAN DATA
 function renderAll() {
   renderChecker();
   renderTV();
@@ -240,14 +241,33 @@ function setView(v) {
   renderAll(); 
 }
 
+// PERBAIKAN FOTO SPREADSHEET: Menambahkan Auto-Compress (Resize)
 function handlePhoto(key, ev) { 
   const file = ev.target.files[0]; if (!file) return; 
   const reader = new FileReader(); 
   reader.onload = (e) => { 
-    photoCache[key] = e.target.result; 
-    document.getElementById(`pi-${key}`).src = e.target.result; 
-    document.getElementById(`pi-${key}`).style.display = 'block'; 
-    document.getElementById(`pp-${key}`).style.display = 'none'; 
+    const img = new Image();
+    img.onload = () => {
+      // Buat Canvas untuk memperkecil gambar
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      const maxWidth = 600; // Ukuran kompresi max width
+      const scaleSize = maxWidth / img.width;
+      canvas.width = maxWidth;
+      canvas.height = img.height * scaleSize;
+      
+      // Gambar ulang dengan ukuran lebih kecil
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      
+      // Convert ke base64 dengan format JPEG dan Quality 60%
+      const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.6); 
+      
+      photoCache[key] = compressedDataUrl; 
+      document.getElementById(`pi-${key}`).src = compressedDataUrl; 
+      document.getElementById(`pi-${key}`).style.display = 'block'; 
+      document.getElementById(`pp-${key}`).style.display = 'none'; 
+    };
+    img.src = e.target.result;
   }; 
   reader.readAsDataURL(file); 
 }
@@ -263,14 +283,13 @@ async function fetchDatabase() {
     const response = await fetch(API_URL);
     const data = await response.json();
     
-    // Pastikan key (misal: row.securityname, row.status) sesuai dengan output Google Apps Script Anda (biasanya huruf kecil semua)
     fleets = data.map(row => ({
       id: row.id, secName: row.securityname, driverName: row.driver, plateNumber: row.plate, fleetType: row.type, fleetSize: row.size,
       arrivalTime: row.arrivaltime, checkerName: row.checkername, status: row.status,
       unloadStartTime: row.unloadstart || null, unloadEndTime: row.unloadend || null
     }));
     
-    renderAll(); // Memanggil render yang tadi ditambahkan
+    renderAll();
   } catch (e) { 
     console.error("Koneksi ke Sheet terputus.", e); 
   }
@@ -299,7 +318,6 @@ async function submitArrival() {
   } catch(e) { toast('❌ Gagal Simpan!','err'); }
 }
 
-// Fungsi update filter saat petugas mengetik atau memilih dropdown
 function updateCheckerFilter() {
   checkerSearchTerm = document.getElementById('search-fleet').value.toLowerCase().trim();
   checkerStatusFilter = document.getElementById('filter-status').value;
@@ -309,15 +327,12 @@ function updateCheckerFilter() {
 function renderChecker() {
   const el = document.getElementById('ck-list'); if(!el) return;
   
-  // 1. Ambil list awal (yang belum selesai / done)
   let list = fleets.filter(f => f.status && f.status.toLowerCase() !== 'done');
   
-  // 2. Terapkan Filter Status
   if (checkerStatusFilter !== 'all') {
     list = list.filter(f => f.status.toLowerCase() === checkerStatusFilter);
   }
   
-  // 3. Terapkan Filter Pencarian (Plat atau Nama Supir)
   if (checkerSearchTerm !== '') {
     list = list.filter(f => 
       (f.plateNumber && f.plateNumber.toLowerCase().includes(checkerSearchTerm)) ||
@@ -351,7 +366,6 @@ function renderChecker() {
         <button class="btn btn-success mt-10" style="margin-top:10px;" onclick="finishUnloading('${f.id}')">✅ SELESAI UNLOAD</button>
       `;
     }
-    // Ditambahkan info "Supir: {Nama}" agar saat dicarikan, petugas mengerti kenapa card tersebut muncul
     return `<div class="fleet-card"><div class="fleet-card-header"><div><div class="fleet-name">${f.plateNumber || '-'}</div><div class="fleet-meta">${f.fleetType || '-'} · Supir: ${f.driverName || '-'} · Tiba: ${f.arrivalTime ? fmtHM(f.arrivalTime) : '-'}</div></div><span class="status-badge s-${status}">${status}</span></div>${content}</div>`;
   }).join('');
 }
@@ -425,9 +439,10 @@ function renderTV() {
   tbody.innerHTML = enrichedFleets.map((f, i) => {
     const status = f.status ? f.status.toLowerCase() : '';
     const uMax = status ==='unloading' ? (KPI_UNLOAD[f.fleetSize] || '-') : '-';
+    // MENGUBAH TULISAN SEC MENJADI DRV DAN MENAMPILKAN NAMA SUPIR
     return `<tr>
       <td>${i+1}</td>
-      <td>Sec: <b>${f.secName || '-'}</b><br>Chk: <b>${f.checkerName || '-'}</b></td>
+      <td>Drv: <b>${f.driverName || '-'}</b><br>Chk: <b>${f.checkerName || '-'}</b></td>
       <td><b>${f.plateNumber || '-'}</b><br><small>${f.fleetType || '-'}</small></td>
       <td><span class="status-badge s-${status}">${status}</span></td>
       <td class="kpi-cell ${f.qStat.cls}">${f.qDur}m / 180m<br><small>${f.qStat.txt}</small></td>
