@@ -37,7 +37,9 @@
     .tv-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:22px; padding-bottom:16px; border-bottom:1px solid var(--border); flex-wrap: wrap; }
     .tv-branding { display:flex; align-items:center; gap:14px; }
     .tv-main-title { font-family:'Rajdhani',sans-serif; font-size:20px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color: var(--amber); }
+    .tv-clock-wrap { text-align: right; }
     .tv-clock-time { font-family:'IBM Plex Mono',monospace; font-size:38px; font-weight:600; color:var(--amber); }
+    .tv-clock-date { font-family:'Nunito',sans-serif; font-size:13px; font-weight:600; color:var(--text2); margin-top:-4px; }
     .kpi-row { display:grid; grid-template-columns: repeat(4, 1fr); gap:14px; margin-bottom:22px; }
     .kpi-card { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:16px 18px; text-align:center; }
     .kpi-card-label { font-family:'Rajdhani',sans-serif; font-size:11px; font-weight:700; text-transform:uppercase; color:var(--text2); margin-bottom:8px; }
@@ -112,14 +114,12 @@
   <div class="tv-wrap">
     <div class="tv-header">
       <div class="tv-branding">
-        <img src="logo-nadi.png" alt="NADI Logo" style="height: 40px; border-radius: 4px;"> 
+        <img src="LINK_LOGO_NADI_DISINI" alt="NADI Logo" style="height: 40px; border-radius: 4px;"> 
         <div class="tv-main-title">DB-NADI BDO</div>
       </div>
       <div class="tv-clock-wrap">
-  <div class="tv-clock-time" id="tv-time">--:--:--</div>
-  <div id="tv-date" style="font-size: 16px; color: var(--text2); margin-top: 5px; font-family: 'Rajdhani';"></div>
-</div>
         <div class="tv-clock-time" id="tv-time">--:--:--</div>
+        <div class="tv-clock-date" id="tv-date">-- --- ----</div>
       </div>
     </div>
 
@@ -195,8 +195,16 @@ function fmtHM(iso) { const d = new Date(iso); return `${String(d.getHours()).pa
 function tickClock() { 
   const n = new Date(); 
   const hh = String(n.getHours()).padStart(2,'0'), mm = String(n.getMinutes()).padStart(2,'0'), ss = String(n.getSeconds()).padStart(2,'0'); 
-  const tvt = document.getElementById('tv-time'), sdt = document.getElementById('sec-datetime'); 
+  
+  const days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+  const months = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+  
+  const tvt = document.getElementById('tv-time');
+  const tvd = document.getElementById('tv-date');
+  const sdt = document.getElementById('sec-datetime'); 
+  
   if (tvt) tvt.textContent = `${hh}:${mm}:${ss}`; 
+  if (tvd) tvd.textContent = `${days[n.getDay()]}, ${String(n.getDate()).padStart(2,'0')} ${months[n.getMonth()]} ${n.getFullYear()}`;
   if (sdt) sdt.textContent = `Waktu Sistem: ${hh}:${mm}`; 
 }
 setInterval(tickClock, 1000); tickClock();
