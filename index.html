@@ -6,7 +6,7 @@
   <title>DB-NADI — Monitoring Armada</title>
   <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Nunito:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
-    :root { --bg: #050d1a; --surface: #0d1b2e; --surface2: #132038; --border: #1e3354; --text: #e2eaf5; --text2: #7a9cbf; --amber: #f59e0b; --amber-dim: rgba(245,158,11,0.12); --green: #10b981; --yellow: #eab308; --red: #ef4444; --blue: #38bdf8; --jne-red: #e11d24; }
+    :root { --bg: #050d1a; --surface: #0d1b2e; --surface2: #132038; --border: #1e3354; --text: #e2eaf5; --text2: #7a9cbf; --amber: #f59e0b; --amber-dim: rgba(245,158,11,0.12); --green: #10b981; --green-dim: rgba(16,185,129,0.12); --yellow: #eab308; --yellow-dim: rgba(234,179,8,0.12); --red: #ef4444; --red-dim: rgba(239,68,68,0.12); --blue: #38bdf8; --blue-dim: rgba(56,189,248,0.12); }
     * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
     body { background: var(--bg); color: var(--text); font-family: 'Nunito', sans-serif; min-height: 100vh; overflow-x: hidden; }
     .nav { display: flex; background: var(--surface); border-bottom: 2px solid var(--border); position: sticky; top: 0; z-index: 100; }
@@ -20,44 +20,36 @@
     .form-input, .form-select { width: 100%; padding: 12px 14px; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-size: 15px; font-family: 'Nunito', sans-serif; outline: none; }
     .form-input:focus, .form-select:focus { border-color: var(--amber); }
     .btn { width: 100%; padding: 14px; border: none; border-radius: 8px; font-family: 'Rajdhani', sans-serif; font-size: 16px; font-weight: 700; text-transform: uppercase; cursor: pointer; transition: all 0.15s; }
-    .btn-primary { background: var(--amber); color: #000; } .btn-success { background: var(--green); color: #fff; } .btn-sm { padding: 9px 14px; font-size: 13px; }
-    .photo-capture { position: relative; width: 100%; height: 170px; background: var(--surface2); border: 2px dashed var(--border); border-radius: 10px; display: flex; flex-direction: column; align-items: center; justify-content: center; overflow: hidden; }
-    .photo-capture input[type="file"] { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
-    .photo-placeholder { display: flex; flex-direction: column; align-items: center; color: var(--text2); pointer-events: none; z-index: 1; }
-    .preview-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: none; }
+    .btn-primary { background: var(--amber); color: #000; } .btn-success { background: var(--green); color: #fff; }
     .datetime-badge { background: var(--amber-dim); border: 1px solid rgba(245,158,11,0.3); color: var(--amber); padding: 9px 14px; border-radius: 8px; font-family: 'IBM Plex Mono', monospace; font-size: 13px; margin-bottom: 16px; text-align: center; }
     .fleet-card { background: var(--surface); border: 1px solid var(--border); border-left: 3px solid var(--border); border-radius: 10px; padding: 14px; margin-bottom: 10px; }
     .fleet-card-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; }
     .fleet-name { font-weight: 700; font-size: 15px; } .fleet-meta { font-size: 12px; color: var(--text2); font-family: 'IBM Plex Mono', monospace; margin-top: 2px; }
-    .type-badge { font-family: 'IBM Plex Mono', monospace; font-size: 11px; padding: 3px 9px; border-radius: 4px; font-weight: 600; }
-    .badge-small { background: var(--blue-dim); color: var(--blue); } .badge-medium { background: var(--yellow-dim); color: var(--yellow); } .badge-large { background: var(--red-dim); color: var(--red); }
     .status-badge { display: inline-flex; align-items: center; padding: 4px 10px; border-radius: 20px; font-family: 'Rajdhani', sans-serif; font-size: 12px; font-weight: 700; text-transform: uppercase; }
     .s-queuing { background: var(--blue-dim); color: var(--blue); } .s-unloading { background: var(--amber-dim); color: var(--amber); } .s-done { background: var(--green-dim); color: var(--green); }
     .tv-wrap { padding: 20px 24px 32px; min-height: 100vh; }
-    .tv-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:22px; padding-bottom:16px; border-bottom:1px solid var(--border); flex-wrap: wrap; }
-    .tv-branding { display:flex; align-items:center; gap:14px; }
-    .tv-main-title { font-family:'Rajdhani',sans-serif; font-size:20px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color: var(--amber); }
-    .tv-subtitle { font-family:'Nunito',sans-serif; font-size:11px; font-weight:600; color:var(--text2); text-transform:uppercase; letter-spacing:0.5px; margin-top:-2px; }
+    .tv-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 22px; padding-bottom: 16px; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+    .tv-branding { display: flex; align-items: center; gap: 14px; }
+    .tv-main-title { font-family: 'Rajdhani', sans-serif; font-size: 20px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: var(--amber); }
+    .tv-subtitle { font-family: 'Nunito', sans-serif; font-size: 11px; font-weight: 600; color: var(--text2); letter-spacing: 0.5px; margin-top: -2px; }
     .tv-clock-wrap { text-align: right; }
-    .tv-clock-time { font-family:'IBM Plex Mono',monospace; font-size:38px; font-weight:600; color:var(--amber); }
-    .tv-clock-date { font-family:'Nunito',sans-serif; font-size:13px; font-weight:600; color:var(--text2); margin-top:-4px; }
-    .kpi-row { display:grid; grid-template-columns: repeat(4, 1fr); gap:14px; margin-bottom:22px; }
-    .kpi-card { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:16px 18px; text-align:center; }
-    .kpi-card-label { font-family:'Rajdhani',sans-serif; font-size:11px; font-weight:700; text-transform:uppercase; color:var(--text2); margin-bottom:8px; }
-    .kpi-card-val { font-family:'IBM Plex Mono',monospace; font-size:42px; font-weight:600; }
-    .table-wrap { background:var(--surface); border:1px solid var(--border); border-radius:12px; overflow:hidden; }
-    table { width:100%; border-collapse:collapse; }
-    th { padding:10px 14px; text-align:left; font-family:'Rajdhani',sans-serif; font-size:12px; font-weight:700; text-transform:uppercase; color:var(--text2); border-bottom:1px solid var(--border); cursor: pointer; user-select: none; }
+    .tv-clock-time { font-family: 'IBM Plex Mono', monospace; font-size: 38px; font-weight: 600; color: var(--amber); }
+    .tv-clock-date { font-family: 'Nunito', sans-serif; font-size: 13px; font-weight: 600; color: var(--text2); margin-top: -4px; }
+    .kpi-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 22px; }
+    .kpi-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 16px 18px; text-align: center; }
+    .kpi-card-label { font-family: 'Rajdhani', sans-serif; font-size: 11px; font-weight: 700; text-transform: uppercase; color: var(--text2); margin-bottom: 8px; }
+    .kpi-card-val { font-family: 'IBM Plex Mono', monospace; font-size: 42px; font-weight: 600; }
+    .table-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
+    table { width: 100%; border-collapse: collapse; }
+    th { padding: 10px 14px; text-align: left; font-family: 'Rajdhani', sans-serif; font-size: 12px; font-weight: 700; text-transform: uppercase; color: var(--text2); border-bottom: 1px solid var(--border); cursor: pointer; user-select: none; }
     th:hover { background: rgba(255,255,255,0.05); }
-    td { padding:11px 14px; font-size:13px; border-bottom:1px solid rgba(30,51,84,0.5); }
+    td { padding: 11px 14px; font-size: 13px; border-bottom: 1px solid rgba(30,51,84,0.5); }
     .kpi-cell { font-family: 'IBM Plex Mono', monospace; font-size: 13px; font-weight: 600; }
-    .c-green { color: var(--green); } .c-yellow { color: var(--yellow); } 
-    .c-red { color: var(--red); font-weight: bold; animation: blink 1s infinite; }
+    .c-green { color: var(--green); } .c-yellow { color: var(--yellow); } .c-red { color: var(--red); font-weight: bold; animation: blink 1s infinite; }
     @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
-    .toast { position:fixed; bottom:76px; left:50%; transform:translateX(-50%) translateY(100px); padding:12px 24px; border-radius:30px; font-family:'Rajdhani',sans-serif; font-size:15px; font-weight:700; z-index:400; transition:transform 0.3s; color:#fff; }
-    .toast.show { transform:translateX(-50%) translateY(0); }
-    .toast-ok { background:var(--green); } .toast-err { background:var(--red); }
-    
+    .toast { position: fixed; bottom: 76px; left: 50%; transform: translateX(-50%) translateY(100px); padding: 12px 24px; border-radius: 30px; font-family: 'Rajdhani', sans-serif; font-size: 15px; font-weight: 700; z-index: 400; transition: transform 0.3s; color: #fff; }
+    .toast.show { transform: translateX(-50%) translateY(0); }
+    .toast-ok { background: var(--green); } .toast-err { background: var(--red); }
     .filter-box { display: flex; gap: 10px; margin-bottom: 15px; }
     .filter-box .form-select { flex: 1; }
   </style>
@@ -94,14 +86,6 @@
         <optgroup label="Large (KPI Unload: 120m)"><option value="Fuso">Fuso</option><option value="Wingbox">Wingbox</option><option value="Tronton">Tronton</option></optgroup>
       </select>
     </div>
-    <div class="form-group">
-      <label class="form-label">📷 Foto Evidensi Kedatangan</label>
-      <div class="photo-capture">
-        <input type="file" accept="image/*" capture="environment" onchange="handlePhoto('arrival',event)" />
-        <div class="photo-placeholder" id="pp-arrival"><span>📷</span><span class="label">Ambil Foto Armada</span></div>
-        <img class="preview-img" id="pi-arrival" />
-      </div>
-    </div>
     <button class="btn btn-primary" onclick="submitArrival()">✅ Catat Kedatangan</button>
   </div>
 </div>
@@ -109,7 +93,7 @@
 <div id="view-checker" class="view">
   <div class="mobile-container">
     <div class="section-title">📋 Panel Checker</div>
-    <div style="font-size: 13px; color: var(--text2); margin-bottom: 15px;">Daftar armada yang berada di area loading dock. Silakan mulai proses atau selesaikan.</div>
+    <div style="font-size: 13px; color: var(--text2); margin-bottom: 15px;">Daftar antrian bongkar muat Hub JNE.</div>
     
     <div class="filter-box">
       <select class="form-select" id="filter-status" onchange="updateCheckerFilter()">
@@ -119,7 +103,7 @@
       </select>
     </div>
     <div class="form-group" style="margin-bottom: 20px;">
-      <input type="text" class="form-input" id="search-fleet" placeholder="🔍 Cari Nopol atau Nama Supir..." onkeyup="updateCheckerFilter()" />
+      <input type="text" class="form-input" id="search-fleet" placeholder="🔍 Cari Nopol, Supir, atau Checker..." onkeyup="updateCheckerFilter()" />
     </div>
     <div id="ck-list"></div>
   </div>
@@ -169,17 +153,18 @@
 <div class="toast" id="toast"></div>
 
 <script>
-// --- SETUP URL API ---
-const API_URL = 'https://script.google.com/macros/s/AKfycbwGisMPII_fEvtAE6sA4zz28ku7EcR_3kLjpBDEmKcBtVJBIGKneC8S9PYD_ph2qKlm/exec';
+const API_URL = 'https://script.google.com/macros/s/AKfycbzFAgVqxz3hGCmu1nGxO9YoJJ7NNdnetxC-IdVCZx0shBnATLCBp5uI4l1itFskWVQy/exec';
+
+// PARAMETER GEOLOCATION HUB BANDUNG
+const TARGET_LAT = -6.9356255322387295;
+const TARGET_LON = 107.6989397768731;
+const MAX_RADIUS_METER = 100;
 
 const FLEET_SIZES = { small: ['Blandvan','L300'], medium: ['CDD','CDE','CDEL','Truck'], large: ['Fuso','Wingbox','Tronton'] };
 const KPI_UNLOAD = { small:20, medium:60, large:120 }; 
 const KPI_QUEUE  = 180; 
 
 let fleets = [];
-let photoCache = {};
-let alertedFleets = new Set();
-
 let checkerSearchTerm = '';
 let checkerStatusFilter = 'all';
 
@@ -188,16 +173,12 @@ function playAlarm(level) {
     const ctx = new (window.AudioContext || window.webkitAudioContext)();
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-    
+    osc.connect(gain); gain.connect(ctx.destination);
     if(level === 'warning') { 
-      osc.frequency.value = 400; osc.type = 'sine';
-      gain.gain.setValueAtTime(0.1, ctx.currentTime);
+      osc.frequency.value = 400; gain.gain.setValueAtTime(0.1, ctx.currentTime);
       osc.start(); osc.stop(ctx.currentTime + 0.5);
     } else { 
-      osc.frequency.value = 800; osc.type = 'square';
-      gain.gain.setValueAtTime(0.3, ctx.currentTime);
+      osc.frequency.value = 800; osc.type = 'square'; gain.gain.setValueAtTime(0.3, ctx.currentTime);
       osc.start(); osc.stop(ctx.currentTime + 1.0);
     }
   } catch(e) {} 
@@ -208,31 +189,20 @@ function elapsed(startIso, endIso) {
   const end = endIso ? new Date(endIso) : new Date();
   return Math.max(0, Math.floor((end - new Date(startIso)) / 60000));
 }
-function fmtMin(m) { const h = Math.floor(m/60), min = m%60; return h > 0 ? `${h}j ${min}m` : `${min}m`; }
 function fmtHM(iso) { const d = new Date(iso); return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`; }
 
 function tickClock() { 
   const n = new Date(); 
   const hh = String(n.getHours()).padStart(2,'0'), mm = String(n.getMinutes()).padStart(2,'0'), ss = String(n.getSeconds()).padStart(2,'0'); 
-  
   const days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
   const months = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
-  
-  const tvt = document.getElementById('tv-time');
-  const tvd = document.getElementById('tv-date');
-  const sdt = document.getElementById('sec-datetime'); 
-  
-  if (tvt) tvt.textContent = `${hh}:${mm}:${ss}`; 
-  if (tvd) tvd.textContent = `${days[n.getDay()]}, ${String(n.getDate()).padStart(2,'0')} ${months[n.getMonth()]} ${n.getFullYear()}`;
-  if (sdt) sdt.textContent = `Waktu Sistem: ${hh}:${mm}`; 
+  if (document.getElementById('tv-time')) document.getElementById('tv-time').textContent = `${hh}:${mm}:${ss}`; 
+  if (document.getElementById('tv-date')) document.getElementById('tv-date').textContent = `${days[n.getDay()]}, ${String(n.getDate()).padStart(2,'0')} ${months[n.getMonth()]} ${n.getFullYear()}`;
+  if (document.getElementById('sec-datetime')) document.getElementById('sec-datetime').textContent = `Waktu Sistem: ${hh}:${mm}`; 
 }
 setInterval(tickClock, 1000); tickClock();
 
-function renderAll() {
-  renderChecker();
-  renderTV();
-}
-
+function renderAll() { renderChecker(); renderTV(); }
 function setView(v) { 
   document.querySelectorAll('.view').forEach(el => el.classList.remove('active')); 
   document.querySelectorAll('.nav-btn').forEach(el => el.classList.remove('active')); 
@@ -241,58 +211,47 @@ function setView(v) {
   renderAll(); 
 }
 
-// PERBAIKAN FOTO SPREADSHEET: Menambahkan Auto-Compress (Resize)
-function handlePhoto(key, ev) { 
-  const file = ev.target.files[0]; if (!file) return; 
-  const reader = new FileReader(); 
-  reader.onload = (e) => { 
-    const img = new Image();
-    img.onload = () => {
-      // Buat Canvas untuk memperkecil gambar
-      const canvas = document.createElement('canvas');
-      const ctx = canvas.getContext('2d');
-      const maxWidth = 600; // Ukuran kompresi max width
-      const scaleSize = maxWidth / img.width;
-      canvas.width = maxWidth;
-      canvas.height = img.height * scaleSize;
-      
-      // Gambar ulang dengan ukuran lebih kecil
-      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-      
-      // Convert ke base64 dengan format JPEG dan Quality 60%
-      const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.6); 
-      
-      photoCache[key] = compressedDataUrl; 
-      document.getElementById(`pi-${key}`).src = compressedDataUrl; 
-      document.getElementById(`pi-${key}`).style.display = 'block'; 
-      document.getElementById(`pp-${key}`).style.display = 'none'; 
-    };
-    img.src = e.target.result;
-  }; 
-  reader.readAsDataURL(file); 
+function toast(msg, type) { 
+  const el = document.getElementById('toast'); el.textContent = msg; 
+  el.className = `toast toast-${type==='err'?'err':'ok'} show`; 
+  setTimeout(() => el.classList.remove('show'), 3000); 
 }
 
-function toast(msg, type) { 
-  const el = document.getElementById('toast'); 
-  el.textContent = msg; el.className = `toast toast-${type==='err'?'err':'ok'} show`; 
-  setTimeout(() => el.classList.remove('show'), 3000); 
+function getDistance(lat1, lon1, lat2, lon2) {
+  const R = 6371000; 
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+            Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon/2) * Math.sin(dLon/2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  return R * c; 
+}
+
+function getGPSLocation() {
+  return new Promise((resolve, reject) => {
+    if (!navigator.geolocation) { reject("HP tidak mendukung GPS."); return; }
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const d = getDistance(pos.coords.latitude, pos.coords.longitude, TARGET_LAT, TARGET_LON);
+        resolve({ lat: pos.coords.latitude, lon: pos.coords.longitude, distance: d });
+      },
+      () => { reject("Akses GPS ditolak! Aktifkan izin lokasi browser."); },
+      { enableHighAccuracy: true, timeout: 6000, maximumAge: 0 }
+    );
+  });
 }
 
 async function fetchDatabase() {
   try {
     const response = await fetch(API_URL);
     const data = await response.json();
-    
     fleets = data.map(row => ({
       id: row.id, secName: row.securityname, driverName: row.driver, plateNumber: row.plate, fleetType: row.type, fleetSize: row.size,
       arrivalTime: row.arrivaltime, checkerName: row.checkername, status: row.status,
       unloadStartTime: row.unloadstart || null, unloadEndTime: row.unloadend || null
     }));
-    
     renderAll();
-  } catch (e) { 
-    console.error("Koneksi ke Sheet terputus.", e); 
-  }
+  } catch (e) { console.error("Koneksi terputus.", e); }
 }
 
 async function submitArrival() {
@@ -300,22 +259,25 @@ async function submitArrival() {
   const driver = document.getElementById('f-driver').value.trim(); 
   const plate = document.getElementById('f-plate').value.trim().toUpperCase(); 
   const type = document.getElementById('f-type').value;
+  if (!secName || !driver || !plate) { toast('❌ Semua kolom wajib diisi!','err'); return; }
   
-  if (!secName || !driver || !plate || !photoCache.arrival) { toast('❌ Semua kolom & foto wajib diisi!','err'); return; }
-  
-  toast('⏳ Menyimpan ke Database...');
+  toast('⏳ Memverifikasi Radius GPS Lapangan...');
   try {
+    const loc = await getGPSLocation();
+    if (loc.distance > MAX_RADIUS_METER) {
+      toast('❌ DITOLAK: Anda berada ' + Math.round(loc.distance) + 'm di luar area Hub JNE! (Maks 100m)', 'err');
+      return;
+    }
+    
+    toast('⏳ Menyimpan...');
+    const logText = "GPS OK (" + Math.round(loc.distance) + "m)";
     await fetch(API_URL, { method: 'POST', body: JSON.stringify({ 
       action: 'addArrival', id: 'ARR-' + Date.now().toString().slice(-6), 
-      securityName: secName, driver: driver, plate: plate, type: type, size: getSize(type), 
-      arrivalTime: new Date().toISOString(), photo: photoCache.arrival 
+      securityName: secName, driver: driver, plate: plate, type: type, size: getSize(type), arrivalTime: new Date().toISOString(), gpsLog: logText
     })});
-    
     document.getElementById('f-plate').value = ''; document.getElementById('f-driver').value = '';
-    document.getElementById('pi-arrival').style.display = 'none'; document.getElementById('pp-arrival').style.display = 'flex'; 
-    photoCache.arrival = null;
-    await fetchDatabase(); toast('✅ Kedatangan Berhasil Dicatat!');
-  } catch(e) { toast('❌ Gagal Simpan!','err'); }
+    await fetchDatabase(); toast('✅ Kedatangan Berhasil Valid JNE!');
+  } catch(err) { toast('❌ GPS ERROR: ' + err, 'err'); }
 }
 
 function updateCheckerFilter() {
@@ -324,97 +286,93 @@ function updateCheckerFilter() {
   renderChecker();
 }
 
+// UPDATE: Modul pencarian lokal untuk mendukung Nama Checker
 function renderChecker() {
   const el = document.getElementById('ck-list'); if(!el) return;
-  
   let list = fleets.filter(f => f.status && f.status.toLowerCase() !== 'done');
+  if (checkerStatusFilter !== 'all') list = list.filter(f => f.status.toLowerCase() === checkerStatusFilter);
   
-  if (checkerStatusFilter !== 'all') {
-    list = list.filter(f => f.status.toLowerCase() === checkerStatusFilter);
-  }
-  
+  // UPDATE BARIS INI: Ditambahkan filter untuk f.checkerName
   if (checkerSearchTerm !== '') {
     list = list.filter(f => 
-      (f.plateNumber && f.plateNumber.toLowerCase().includes(checkerSearchTerm)) ||
-      (f.driverName && f.driverName.toLowerCase().includes(checkerSearchTerm))
+      (f.plateNumber && f.plateNumber.toLowerCase().includes(checkerSearchTerm)) || 
+      (f.driverName && f.driverName.toLowerCase().includes(checkerSearchTerm)) ||
+      (f.checkerName && f.checkerName.toLowerCase().includes(checkerSearchTerm))
     );
   }
-
-  if(!list.length) { el.innerHTML = '<div class="empty" style="text-align:center; padding: 20px; color: var(--text2);">Tidak ada armada yang sesuai dengan filter/pencarian.</div>'; return; }
+  if(!list.length) { el.innerHTML = '<div style="text-align:center; padding: 20px; color: var(--text2);">Kosong / Tidak ditemukan.</div>'; return; }
   
   el.innerHTML = list.map(f => {
-    let content = '';
-    const status = f.status ? f.status.toLowerCase() : '';
+    let content = ''; const status = f.status.toLowerCase();
     if(status === 'queuing') {
       content = `
-        <div class="form-group mt-10"><input type="text" id="cn-${f.id}" class="form-input" placeholder="Nama Anda (Checker)..."></div>
-        <div class="photo-capture mt-10" style="height:100px; margin-top:10px;">
-          <input type="file" accept="image/*" capture="environment" onchange="handlePhoto('start-${f.id}',event)">
-          <div class="photo-placeholder" id="pp-start-${f.id}"><span>📷</span><span class="label">Foto Pintu Dibuka</span></div>
-          <img class="preview-img" id="pi-start-${f.id}" />
-        </div>
-        <button class="btn btn-primary mt-10" style="margin-top:10px;" onclick="startUnloading('${f.id}')">🔄 MULAI UNLOAD</button>
+        <div class="form-group" style="margin-top:10px;"><input type="text" id="cn-${f.id}" class="form-input" placeholder="Nama Anda (Checker)..."></div>
+        <button class="btn btn-primary" style="margin-top:5px;" onclick="startUnloading('${f.id}')">🔄 MULAI UNLOAD (CEK GPS)</button>
       `;
     } else if(status === 'unloading') {
       content = `
-        <div class="mt-10" style="font-size:13px; color:var(--amber); margin-top:10px;">Checker: ${f.checkerName || '-'}</div>
-        <div class="photo-capture mt-10" style="height:100px; margin-top:10px;">
-          <input type="file" accept="image/*" capture="environment" onchange="handlePhoto('end-${f.id}',event)">
-          <div class="photo-placeholder" id="pp-end-${f.id}"><span>📷</span><span class="label">Foto Armada Kosong</span></div>
-          <img class="preview-img" id="pi-end-${f.id}" />
-        </div>
-        <button class="btn btn-success mt-10" style="margin-top:10px;" onclick="finishUnloading('${f.id}')">✅ SELESAI UNLOAD</button>
+        <div style="font-size:13px; color:var(--amber); margin: 8px 0;">Checker Aktif: ${f.checkerName || '-'}</div>
+        <button class="btn btn-success" onclick="finishUnloading('${f.id}')">✅ SELESAI UNLOAD (CEK GPS)</button>
       `;
     }
-    return `<div class="fleet-card"><div class="fleet-card-header"><div><div class="fleet-name">${f.plateNumber || '-'}</div><div class="fleet-meta">${f.fleetType || '-'} · Supir: ${f.driverName || '-'} · Tiba: ${f.arrivalTime ? fmtHM(f.arrivalTime) : '-'}</div></div><span class="status-badge s-${status}">${status}</span></div>${content}</div>`;
+    return `<div class="fleet-card"><div class="fleet-card-header"><div><div class="fleet-name">${f.plateNumber}</div><div class="fleet-meta">${f.fleetType} · Supir: ${f.driverName} · Tiba: ${fmtHM(f.arrivalTime)}</div></div><span class="status-badge s-${status}">${status}</span></div>${content}</div>`;
   }).join('');
 }
 
 async function startUnloading(id) {
-  const cName = document.getElementById(`cn-${id}`).value;
-  if(!cName || !photoCache[`start-${id}`]) { toast('❌ Nama Checker dan Foto wajib!','err'); return; }
-  toast('⏳ Memulai proses...');
-  await fetch(API_URL, { method: 'POST', body: JSON.stringify({ action: 'updateStatus', id: id, status: 'unloading', checkerName: cName, startTime: new Date().toISOString(), photoStart: photoCache[`start-${id}`] }) });
-  await fetchDatabase(); toast('🔄 Unloading Dimulai!');
+  const cName = document.getElementById(`cn-${id}`).value.trim();
+  if(!cName) { toast('❌ Nama Checker wajib diisi!','err'); return; }
+  
+  toast('⏳ Memverifikasi GPS Anda...');
+  try {
+    const loc = await getGPSLocation();
+    if (loc.distance > MAX_RADIUS_METER) {
+      toast('❌ DITOLAK: Anda berada ' + Math.round(loc.distance) + 'm di luar area Hub JNE!', 'err');
+      return;
+    }
+    const logText = "GPS OK (" + Math.round(loc.distance) + "m)";
+    await fetch(API_URL, { method: 'POST', body: JSON.stringify({ action: 'updateStatus', id: id, status: 'unloading', checkerName: cName, startTime: new Date().toISOString(), gpsLog: logText }) });
+    await fetchDatabase(); toast('🔄 Unloading Berhasil Dimulai!');
+  } catch(err) { toast('❌ GPS ERROR: ' + err, 'err'); }
 }
 
 async function finishUnloading(id) {
-  if(!photoCache[`end-${id}`]) { toast('❌ Foto armada kosong wajib!','err'); return; }
-  toast('⏳ Menyelesaikan...');
-  await fetch(API_URL, { method: 'POST', body: JSON.stringify({ action: 'updateStatus', id: id, status: 'done', endTime: new Date().toISOString(), photoEnd: photoCache[`end-${id}`] }) });
-  await fetchDatabase(); toast('✅ Unloading Selesai!');
+  toast('⏳ Memverifikasi GPS Anda...');
+  try {
+    const loc = await getGPSLocation();
+    if (loc.distance > MAX_RADIUS_METER) {
+      toast('❌ DITOLAK: Selesaikan tugas harus di area Loading Dock JNE!', 'err');
+      return;
+    }
+    const logText = "GPS OK (" + Math.round(loc.distance) + "m)";
+    await fetch(API_URL, { method: 'POST', body: JSON.stringify({ action: 'updateStatus', id: id, status: 'done', endTime: new Date().toISOString(), gpsLog: logText }) });
+    await fetchDatabase(); toast('✅ Unloading Selesai & Valid!');
+  } catch(err) { toast('❌ GPS ERROR: ' + err, 'err'); }
 }
 
 function getKPIStatus(elapsedTime, maxTime) {
   const rem = maxTime - elapsedTime;
   if(rem < 0) return { cls: 'c-red', txt: `Lewat ${Math.abs(rem)}m`, isCrit: 2 };
   if(rem <= 5) return { cls: 'c-red', txt: `Sisa ${rem}m`, isCrit: 1 };
-  if(rem <= 30 && maxTime === 180) return { cls: 'c-yellow', txt: `Sisa ${rem}m`, isCrit: 0 };
-  if(rem <= 10 && maxTime < 180) return { cls: 'c-yellow', txt: `Sisa ${rem}m`, isCrit: 0 };
   return { cls: 'c-green', txt: `Sisa ${rem}m`, isCrit: 0 };
 }
 
 function renderTV() {
   const tbody = document.getElementById('tv-tbody'); if (!tbody) return;
   const activeFleets = fleets.filter(f => f.status && f.status.toLowerCase() !== 'done');
-  
-  let violations = 0;
-  let playHighAlarm = false;
-  let playLowAlarm = false;
+  let violations = 0; let playHighAlarm = false; let playLowAlarm = false;
 
   const enrichedFleets = activeFleets.map(f => {
-    const status = f.status ? f.status.toLowerCase() : '';
+    const status = f.status.toLowerCase();
     const qDur = f.arrivalTime ? elapsed(f.arrivalTime, f.unloadStartTime) : 0;
     const qStat = getKPIStatus(qDur, KPI_QUEUE);
-    
     let uDur = 0; let uStat = {cls:'', txt:'-', isCrit:0};
     if (status === 'unloading') {
       uDur = f.unloadStartTime ? elapsed(f.unloadStartTime, null) : 0;
       uStat = getKPIStatus(uDur, KPI_UNLOAD[f.fleetSize] || 60);
     }
-    
     if (qStat.isCrit === 2 || uStat.isCrit === 2) { violations++; playHighAlarm = true; }
-    else if (qStat.isCrit === 1 || uStat.isCrit === 1) { playLowAlarm = true; }
+    else if (qStat.isCrit === 1 || uStat.isCrit === 1) playLowAlarm = true;
     
     f.priorityScore = Math.max(qStat.isCrit, uStat.isCrit);
     f.qDur = qDur; f.qStat = qStat; f.uDur = uDur; f.uStat = uStat;
@@ -424,26 +382,21 @@ function renderTV() {
   if (playHighAlarm) playAlarm('critical');
   else if (playLowAlarm) playAlarm('warning');
 
-  enrichedFleets.sort((a, b) => {
-    if (b.priorityScore !== a.priorityScore) return b.priorityScore - a.priorityScore;
-    return new Date(a.arrivalTime || 0) - new Date(b.arrivalTime || 0);
-  });
-
+  enrichedFleets.sort((a, b) => b.priorityScore - a.priorityScore);
   document.getElementById('kc-total').textContent = enrichedFleets.length;
-  document.getElementById('kc-queuing').textContent = enrichedFleets.filter(f=> f.status && f.status.toLowerCase() ==='queuing').length;
-  document.getElementById('kc-unloading').textContent = enrichedFleets.filter(f=> f.status && f.status.toLowerCase() ==='unloading').length;
+  document.getElementById('kc-queuing').textContent = enrichedFleets.filter(f=>f.status==='queuing').length;
+  document.getElementById('kc-unloading').textContent = enrichedFleets.filter(f=>f.status==='unloading').length;
   document.getElementById('kc-violations').textContent = violations;
 
-  if (!enrichedFleets.length) { tbody.innerHTML = `<tr><td colspan="6"><div class="empty" style="text-align:center; padding: 20px;">Seluruh operasional clear.</div></td></tr>`; return; }
+  if (!enrichedFleets.length) { tbody.innerHTML = `<tr><td colspan="6"><div style="text-align:center; padding: 20px;">Operasional Clear.</div></td></tr>`; return; }
   
   tbody.innerHTML = enrichedFleets.map((f, i) => {
-    const status = f.status ? f.status.toLowerCase() : '';
+    const status = f.status.toLowerCase();
     const uMax = status ==='unloading' ? (KPI_UNLOAD[f.fleetSize] || '-') : '-';
-    // MENGUBAH TULISAN SEC MENJADI DRV DAN MENAMPILKAN NAMA SUPIR
     return `<tr>
       <td>${i+1}</td>
-      <td>Drv: <b>${f.driverName || '-'}</b><br>Chk: <b>${f.checkerName || '-'}</b></td>
-      <td><b>${f.plateNumber || '-'}</b><br><small>${f.fleetType || '-'}</small></td>
+      <td>Drv: <b>${f.driverName}</b><br>Chk: <b>${f.checkerName || '-'}</b></td>
+      <td><b>${f.plateNumber}</b><br><small>${f.fleetType}</small></td>
       <td><span class="status-badge s-${status}">${status}</span></td>
       <td class="kpi-cell ${f.qStat.cls}">${f.qDur}m / 180m<br><small>${f.qStat.txt}</small></td>
       <td class="kpi-cell ${f.uStat.cls}">${status==='unloading' ? `${f.uDur}m / ${uMax}m<br><small>${f.uStat.txt}</small>` : 'Menunggu'}</td>
@@ -453,14 +406,11 @@ function renderTV() {
 
 function sortTable(n) {
   var table, rows, switching, i, x, y, shouldSwitch, dir, switchcount = 0;
-  table = document.getElementById("mainTable");
-  switching = true; dir = "asc"; 
+  table = document.getElementById("mainTable"); switching = true; dir = "asc"; 
   while (switching) {
     switching = false; rows = table.rows;
     for (i = 1; i < (rows.length - 1); i++) {
-      shouldSwitch = false;
-      x = rows[i].getElementsByTagName("TD")[n];
-      y = rows[i + 1].getElementsByTagName("TD")[n];
+      shouldSwitch = false; x = rows[i].getElementsByTagName("TD")[n]; y = rows[i + 1].getElementsByTagName("TD")[n];
       if (dir == "asc") { if (x.innerHTML.toLowerCase() > y.innerHTML.toLowerCase()) { shouldSwitch = true; break; } } 
       else if (dir == "desc") { if (x.innerHTML.toLowerCase() < y.innerHTML.toLowerCase()) { shouldSwitch = true; break; } }
     }
@@ -470,7 +420,7 @@ function sortTable(n) {
 }
 
 fetchDatabase();
-setInterval(fetchDatabase, 15000); // Sinkronisasi setiap 15 Detik
+setInterval(fetchDatabase, 15000);
 </script>
 </body>
 </html>
