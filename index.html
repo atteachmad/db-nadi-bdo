@@ -6,7 +6,10 @@
   <title>DB-NADI — Monitoring Armada</title>
   <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Nunito:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@4/dist/tesseract.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 
   <style>
     :root { 
@@ -25,16 +28,13 @@
     ::-webkit-scrollbar { display: none; }
     * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
     
-    /* MODIFIED: Ensure HTML and Body stretch fully to prevent bottom gaps on Android */
     html { background: var(--bg); min-height: 100%; transition: background-color 0.3s; }
     body { background: var(--bg); color: var(--text); font-family: 'Nunito', sans-serif; min-height: 100vh; min-height: 100dvh; overflow-x: hidden; -ms-overflow-style: none; scrollbar-width: none; transition: background-color 0.3s, color 0.3s; }
     
-    /* INLINE HAMBURGER MENU & VIEW HEADER */
     .view-header { display: flex; align-items: center; gap: 15px; margin-bottom: 18px; }
     .hamburger-inline { background: transparent; border: none; color: var(--text); font-size: 24px; cursor: pointer; transition: 0.2s; padding: 0; }
     .hamburger-inline:hover { color: var(--amber); }
 
-    /* SIDEBAR STYLES */
     .sidebar-overlay { display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; height: 100dvh; background: rgba(0,0,0,0.6); z-index: 999; backdrop-filter: blur(2px); opacity: 0; transition: opacity 0.3s; }
     .sidebar-overlay.show { display: block; opacity: 1; }
     
@@ -62,12 +62,10 @@
     .submenu { max-height: 0; overflow: hidden; transition: max-height 0.3s ease-out; background: rgba(0,0,0,0.1); border-radius: 8px; }
     .submenu a { padding: 10px 15px 10px 45px; font-size: 13px; font-weight: 500; }
     
-    /* NEW AI BADGE GLOW */
     .badge-new { background: var(--blue); color: #fff; font-size: 9px; padding: 2px 6px; border-radius: 12px; margin-left: auto; box-shadow: 0 0 8px var(--blue); animation: glow 2s infinite; font-weight: bold; }
     @keyframes glow { 0%,100% { box-shadow: 0 0 5px var(--blue); } 50% { box-shadow: 0 0 15px var(--blue); } }
     .text-glow { color: var(--blue) !important; text-shadow: 0 0 5px rgba(56,189,248,0.5); }
     
-    /* THEME SWITCHER */
     .theme-switch-wrapper { padding: 15px 20px; border-top: 1px solid var(--border); margin-top: 20px; display: flex; align-items: center; justify-content: space-between; }
     .theme-label { display: flex; align-items: center; gap: 10px; font-size: 14px; font-weight: 600; color: var(--text); }
     .switch { position: relative; display: inline-block; width: 44px; height: 24px; }
@@ -77,11 +75,9 @@
     input:checked + .slider { background-color: var(--amber); border-color: var(--amber); }
     input:checked + .slider:before { transform: translateX(20px); background-color: #fff; }
 
-    /* VIEWS & COMPONENTS */
     .view { display: none; min-height: 100%; } .view.active { display: block; animation: fadeIn 0.4s; }
     @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
     
-    /* MODIFIED: 100dvh for proper Android Full Screen Fill */
     .mobile-container { max-width: 500px; margin: 0 auto; padding: 24px 16px 80px; display: flex; flex-direction: column; min-height: 100vh; min-height: 100dvh; }
     
     .section-title { font-family: 'Rajdhani', sans-serif; font-size: 20px; font-weight: 700; color: var(--amber); text-transform: uppercase; margin: 0; }
@@ -142,7 +138,6 @@
     .toast.show { transform: translateX(-50%) translateY(0); }
     .toast-ok { background: var(--green); } .toast-err { background: var(--red); }
 
-    /* MODAL BASE */
     .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; height: 100dvh; background: rgba(0,0,0,0.7); z-index: 10000; justify-content: center; align-items: center; }
     .modal-box { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 20px; width: 90%; max-width: 450px; position: relative; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
     .modal-close { position: absolute; top: 10px; right: 15px; color: var(--red); font-size: 20px; font-weight: bold; cursor: pointer; }
@@ -150,9 +145,6 @@
     .modal-body { font-size: 14px; line-height: 1.6; color: var(--text); }
     .modal-body a { color: var(--blue); text-decoration: none; }
 
-    /* =========================================================================
-       MODERN SKEUOMORPHISM (NEUMORPHISM)
-       ========================================================================= */
     .skeuo-card {
       background: var(--surface);
       border-radius: 16px;
@@ -194,7 +186,6 @@
       box-shadow: inset 3px 3px 6px rgba(0,0,0,0.5), inset -3px -3px 6px rgba(255,255,255,0.04);
     }
 
-    /* Light Theme Overrides for Skeuomorphism */
     [data-theme="light"] .skeuo-card {
       box-shadow: 6px 6px 12px #d1d9e6, -6px -6px 12px #ffffff;
       border: none;
@@ -217,11 +208,7 @@
     .chart-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; margin-bottom: 20px; }
     .chart-title { font-family: 'Rajdhani', sans-serif; font-size: 16px; font-weight: 700; color: var(--amber); margin-bottom: 15px; text-transform: uppercase; }
 
-    /* =========================================================================
-       TAMBAHAN: OPTIMASI FULL SCREEN ANDROID UI (MOBILE)
-       ========================================================================= */
     @media (max-width: 600px) {
-      /* Memaksa Modal membentang mengisi 100% tinggi dan lebar layar HP */
       .modal-box {
         position: absolute;
         top: 0;
@@ -570,27 +557,38 @@
       <button class="hamburger-inline" onclick="openSidebar()"><i class="fa-solid fa-bars"></i></button>
       <div class="section-title"><i class="fa-solid fa-robot text-glow"></i> Asisten AI NADI</div>
     </div>
-    <div style="font-size: 13px; color: var(--text2); margin-bottom: 20px;">Ngobrol, cari solusi, atau unggah SOP/WI agar AI semakin cerdas.</div>
+    <div style="font-size: 13px; color: var(--text2); margin-bottom: 20px;">Ngobrol, cari solusi operasional, atau unggah data Excel/Word/Foto untuk dianalisa.</div>
 
     <div class="skeuo-card" style="margin-bottom: 20px;">
-      <div class="form-label">Upload Dokumen Pengetahuan (TXT/CSV/JSON)</div>
+      <div class="form-label">Upload Master Data AI (Excel/Word/Foto)</div>
       <div style="display: flex; gap: 10px; align-items: center; margin-top: 5px;">
-        <input type="file" id="ai-upload" class="form-input" style="padding: 8px; font-size:12px; flex: 1;" accept=".txt,.csv,.json" />
-        <button class="skeuo-btn btn-success" onclick="uploadDataAI()" style="padding: 10px 15px; font-size: 12px;"><i class="fa-solid fa-upload"></i> Upload</button>
+        <input type="file" id="ai-upload-top" class="form-input" style="padding: 8px; font-size:12px; flex: 1;" accept=".txt,.csv,.json,.xlsx,.xls,.docx,.doc,.jpg,.jpeg,.png" />
+        <button class="skeuo-btn btn-success" onclick="processSmartUpload('ai-upload-top')" style="padding: 10px 15px; font-size: 12px;"><i class="fa-solid fa-upload"></i> Proses</button>
       </div>
-      <div id="ai-memory-status" style="font-size:11px; margin-top:8px; color:var(--text2); font-family: 'IBM Plex Mono', monospace;">Memori AI: Default Knowledge</div>
+      <div id="ai-memory-status" style="font-size:11px; margin-top:8px; color:var(--text2); font-family: 'IBM Plex Mono', monospace;">Memori AI: Aktif (0 KB Knowledge)</div>
     </div>
 
     <div class="skeuo-card" style="display: flex; flex-direction: column; flex: 1; min-height: 50vh; margin-bottom: 10px;">
+      
       <div id="ai-chat-box" style="flex: 1; overflow-y: auto; padding: 10px; display:flex; flex-direction: column; gap:12px; margin-bottom: 10px; border: 1px solid rgba(255,255,255,0.05); border-radius: 8px; background: rgba(0,0,0,0.1);">
         <div style="padding: 10px 14px; border-radius: 12px; max-width: 85%; font-size: 13px; line-height: 1.5; align-self: flex-start; background: rgba(56,189,248,0.1); border-left: 3px solid var(--blue); color: var(--text);">
-          <b>🤖 AI NADI:</b><br>Halo! Saya Asisten AI NADI. Anda bisa bertanya tentang SOP bongkar muat, analitik operasional, maupun solusi SLA. Silakan unggah dokumen jika Anda ingin saya belajar aturan kerja (SOP/IK/WI/IM) yang baru!
+          <b>🤖 AI NADI:</b><br>Halo! Saya Asisten Pintar Anda sekarang. 😊<br><br>Coba sapa saya, tanyakan tentang evaluasi SLA, atau <b>klik tombol penjepit kertas (📎) di bawah</b> untuk mengirim file Excel/Gambar manifest agar saya bantu rekap datanya!
         </div>
       </div>
-      <div style="display: flex; gap: 10px;">
-        <input type="text" id="ai-chat-input" class="skeuo-input" placeholder="Ketik pertanyaan solusi operasional..." onkeypress="if(event.key === 'Enter') sendAIChat()" />
-        <button class="skeuo-btn btn-primary" onclick="sendAIChat()" style="padding: 0 20px;"><i class="fa-solid fa-paper-plane"></i></button>
+      
+      <div style="display: flex; gap: 8px; align-items: center; position: relative;">
+        <button class="skeuo-btn btn-outline" onclick="document.getElementById('ai-chat-upload').click()" style="padding: 0 16px; border-radius: 50%; height: 44px; display: flex; align-items: center; justify-content: center;" title="Lampirkan File">
+          <i class="fa-solid fa-paperclip"></i>
+        </button>
+        <input type="file" id="ai-chat-upload" style="display: none;" accept=".txt,.csv,.json,.xlsx,.xls,.docx,.doc,.jpg,.jpeg,.png" onchange="processSmartUpload('ai-chat-upload')" />
+        
+        <input type="text" id="ai-chat-input" class="skeuo-input" placeholder="Tanya AI atau ketik pesan..." onkeypress="if(event.key === 'Enter') sendAIChat()" style="flex: 1; height: 44px;" />
+        
+        <button class="skeuo-btn btn-primary" onclick="sendAIChat()" style="padding: 0 20px; height: 44px; display: flex; align-items: center; justify-content: center;">
+          <i class="fa-solid fa-paper-plane"></i>
+        </button>
       </div>
+
     </div>
   </div>
 </div>
@@ -844,7 +842,6 @@ function updateAnalitikCharts(data) {
     }
   });
 
-  // KPI Chart
   const ctxKPI = document.getElementById('chartKPI');
   if(ctxKPI) {
     if(chartKPI) chartKPI.destroy();
@@ -858,7 +855,6 @@ function updateAnalitikCharts(data) {
     });
   }
 
-  // Origin Chart
   const ctxOrigin = document.getElementById('chartOrigin');
   if(ctxOrigin) {
     if(chartOrigin) chartOrigin.destroy();
@@ -874,7 +870,6 @@ function updateAnalitikCharts(data) {
     });
   }
 
-  // Checker Chart
   const ctxChecker = document.getElementById('chartChecker');
   if(ctxChecker) {
     if(chartChecker) chartChecker.destroy();
@@ -923,25 +918,72 @@ function downloadFilteredData() {
 }
 // ==================================================
 
-// ==== FUNGSI FITUR AI ASSISTANT Cerdas ============
+// ==== FUNGSI FITUR AI ASSISTANT CERDAS (UNIVERSAL) ====
 let aiKnowledgeBase = "";
 
-function uploadDataAI() {
-  const fileInput = document.getElementById('ai-upload');
-  const file = fileInput.files[0];
-  if(!file) { toast("❌ Pilih file dokumen terlebih dahulu.", "err"); return; }
+function saveToKnowledgeBase(filename, textData) {
+  // Membersihkan teks kotor agar tidak memakan RAM berlebih
+  let cleanText = textData.replace(/(\r\n|\n|\r)/gm, " ").replace(/\s+/g, " ").trim();
+  aiKnowledgeBase += `\n[File: ${filename}] Isi Data: ${cleanText}`;
+  const sizeKB = Math.round(aiKnowledgeBase.length / 1024);
+  document.getElementById('ai-memory-status').textContent = `Memori AI: Aktif (${sizeKB} KB Knowledge)`;
+}
 
-  const reader = new FileReader();
-  reader.onload = function(e) {
-    aiKnowledgeBase += "\n" + e.target.result;
-    const sizeKB = Math.round(aiKnowledgeBase.length / 1024);
-    toast("✅ Dokumen berhasil dipelajari AI NADI!");
-    document.getElementById('ai-memory-status').textContent = `Memori AI: Tersimpan (${sizeKB} KB Knowledge)`;
-    fileInput.value = "";
-    appendAIChat("AI", "Terima kasih! Saya telah membaca dan menyimpan Instruksi/SOP yang Anda berikan. Apa yang ingin Anda tanyakan atau diskusikan terkait dokumen tersebut?");
-  };
-  reader.onerror = function() { toast("❌ Gagal membaca file.", "err"); };
-  reader.readAsText(file);
+// Fungsi utama penanganan upload multi-file (dari tombol atas maupun klip kertas chat)
+async function processSmartUpload(inputId) {
+  const fileInput = document.getElementById(inputId);
+  const file = fileInput.files[0];
+  if(!file) return;
+
+  const ext = file.name.split('.').pop().toLowerCase();
+  appendAIChat("User", `<i>📎 Melampirkan File: <b>${file.name}</b></i>`);
+  toast("⏳ AI NADI sedang memproses dokumen...");
+
+  // 1. Jika file berupa GAMBAR (OCR)
+  if (['jpg', 'jpeg', 'png'].includes(ext) || file.type.startsWith('image/')) {
+    appendAIChat("AI", "Saya sedang memindai tulisan di gambar tersebut. Mohon tunggu sebentar ya... 🔍");
+    const reader = new FileReader();
+    reader.onload = function() {
+      Tesseract.recognize(reader.result, 'ind', { logger: m => console.log(m) })
+        .then(({ data: { text } }) => {
+          if(text.trim().length < 2) {
+            appendAIChat("AI", "Hmm, teks di gambarnya kurang jelas atau tidak terbaca. Boleh coba foto yang lebih terang? 😅");
+            return;
+          }
+          saveToKnowledgeBase(file.name, text);
+          appendAIChat("AI", `✅ Gambar <b>${file.name}</b> berhasil saya baca dan rekam. Mau saya simpulkan isinya atau mencari info spesifik dari foto itu?`);
+        })
+        .catch(err => { toast("❌ Gagal memproses OCR Gambar", "err"); });
+    };
+    reader.readAsDataURL(file);
+  } 
+  // 2. Jika file berupa EXCEL (XLSX / XLS / CSV)
+  else if (['xlsx', 'xls', 'csv'].includes(ext)) {
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      const data = new Uint8Array(e.target.result);
+      // Parsing menggunakan SheetJS
+      const workbook = XLSX.read(data, {type: 'array'});
+      const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+      const rawTextData = XLSX.utils.sheet_to_csv(firstSheet);
+      
+      saveToKnowledgeBase(file.name, rawTextData);
+      appendAIChat("AI", `✅ Mantap! Data spreadsheet <b>${file.name}</b> berhasil saya ekstrak ke memori. Sekarang tanyakan saja apa yang ingin dianalisa dari file Excel tersebut. 📊`);
+    };
+    reader.readAsArrayBuffer(file);
+  } 
+  // 3. Jika file Teks atau Word (Fallback ke FileReader dasar)
+  else {
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      saveToKnowledgeBase(file.name, e.target.result);
+      appendAIChat("AI", `✅ Dokumen teks/Word <b>${file.name}</b> berhasil saya pahami. Mari kita bahas instruksi di dalamnya!`);
+    };
+    reader.readAsText(file);
+  }
+
+  // Reset input agar bisa upload file yang sama lagi jika perlu
+  fileInput.value = "";
 }
 
 function appendAIChat(sender, msg) {
@@ -952,6 +994,7 @@ function appendAIChat(sender, msg) {
   
   const html = `<div style="padding: 10px 14px; border-radius: 12px; max-width: 85%; font-size: 13px; line-height: 1.5; ${align}"><b>${name}:</b><br>${msg}</div>`;
   box.innerHTML += html;
+  // Scroll mentok bawah
   box.scrollTop = box.scrollHeight;
 }
 
@@ -959,39 +1002,77 @@ function sendAIChat() {
   const input = document.getElementById('ai-chat-input');
   const val = input.value.trim();
   if(!val) return;
+  
   appendAIChat("User", val);
   input.value = "";
 
   setTimeout(() => {
-    let response = "Maaf, informasi tersebut belum ada dalam database saya saat ini. Anda dapat mengunggah (upload) dokumen SOP, WI, atau Memo Internal agar saya bisa membantu memberi solusinya.";
+    let response = "";
     const lowerVal = val.toLowerCase();
 
-    // 1. Cek basis data internal (Hasil Upload Text)
-    if(aiKnowledgeBase && aiKnowledgeBase.toLowerCase().includes(lowerVal)) {
-       // Pencarian kalimat yang berhubungan
-       const sentences = aiKnowledgeBase.split(/[.?!]/);
-       const matched = sentences.find(s => s.toLowerCase().includes(lowerVal));
-       if(matched) {
-          response = "Berdasarkan dokumen SOP/Instruksi yang saya pelajari:<br><i>\"" + matched.trim() + "\"</i><br><br>Apakah ada hal spesifik lain dari aturan tersebut yang ingin didiskusikan?";
-       }
+    // 1. Logika Santai & Natural (Conversational Chat)
+    const greetings = ['halo', 'hai', 'pagi', 'siang', 'sore', 'malam', 'assalamualaikum'];
+    const praises = ['mantap', 'keren', 'bagus', 'ok', 'oke', 'baik', 'sip', 'terima kasih', 'makasih', 'thanks'];
+    const questionsAboutAI = ['siapa kamu', 'tentang ai', 'bisa apa saja', 'namamu siapa'];
+
+    if (greetings.some(g => lowerVal.includes(g)) && lowerVal.length < 25) {
+        response = "Halo! Senang bisa ngobrol dengan Anda. Saya AI NADI, siap membantu urusan analisa SLA armada atau merekap dokumen Anda. Ada yang bisa saya bantu sekarang?";
+    } 
+    else if (praises.some(p => lowerVal.includes(p)) && lowerVal.length < 25) {
+        response = "Sama-sama! Selalu semangat untuk kelancaran operasional kita. Jangan ragu nanya lagi kalau butuh sesuatu ya! 🚀";
     }
-    // 2. Default Knowledge System (Fallbacks / Hardcoded rules)
-    else if (lowerVal.includes("halo") || lowerVal.includes("hai") || lowerVal.includes("pagi") || lowerVal.includes("siang")) {
-      response = "Halo! Silakan tanyakan hal-hal terkait sistem operasional NADI, evaluasi SLA, atau unggah SOP/WI operasional lapangan.";
-    } else if (lowerVal.includes("sla") || lowerVal.includes("kpi") || lowerVal.includes("terlambat") || lowerVal.includes("overdue")) {
-      response = "<b>Solusi SLA:</b><br>- Antrean armada maksimal adalah <b>180 menit</b>.<br>- Unloading KPI: Small (20m), Medium (60m), Large (120m).<br>Jika banyak armada overdue, rekomendasikan Manajer Operasional untuk menambah Checker sementara di zona antrean.";
-    } else if (lowerVal.includes("analitik") || lowerVal.includes("evaluasi") || lowerVal.includes("kinerja")) {
-      response = "<b>Solusi Analitik:</b> Anda dapat membuka menu <i>Analitik Armada</i>. Di sana sistem matematis AI saya akan menyajikan grafik kinerja checker secara otomatis. Fokuskan perbaikan operasional pada checker dengan bar merah atau grafik unloading terlama.";
+    else if (questionsAboutAI.some(q => lowerVal.includes(q))) {
+        response = "Saya adalah <b>Asisten AI NADI</b> (Dashboard Monitoring Armada), dikembangkan oleh <b>Bpk. Achmad Taufik</b>. Saya bertugas membantu Anda menganalisa telatnya *unloading*, merangkum dokumen lapangan, hingga membaca foto SOP. 😊";
+    }
+    // 2. Logika Standar Operasional JNE/Logistik
+    else if (lowerVal.includes("sla") || lowerVal.includes("kpi") || lowerVal.includes("telat") || lowerVal.includes("overdue") || lowerVal.includes("lama")) {
+        response = "<b>📊 Solusi Operasional & SLA:</b><br>Menurut standar operasional NADI, batas wajar sebuah armada antri di Gate adalah <b>180 menit</b>.<br><br>💡 <b>Rekomendasi Presisi:</b> Jika alarm merah menyala, segera cek di menu 'Checker'. Alokasikan Checker yang sedang santai ke armada tipe *Large* (Fuso/Wingbox) agar bottleneck tidak merambat ke armada kecil.";
     }
     
+    // 3. Logika Pencarian Cerdas ke dalam Memori File Upload (Contextual Vector Search Simulation)
+    if (aiKnowledgeBase !== "" && !response) {
+        // Memecah kata kunci dari chat user (buang kata sambung yang umum)
+        const stopwords = ['dan', 'atau', 'di', 'ke', 'dari', 'yang', 'ini', 'itu', 'tolong', 'cari', 'apa', 'bagaimana'];
+        const keywords = lowerVal.split(" ").filter(w => w.length > 3 && !stopwords.includes(w));
+        
+        if (keywords.length > 0) {
+            // Pecah Knowledge Base menjadi kalimat/baris
+            const sentences = aiKnowledgeBase.split(/[.?!]/).map(s => s.trim()).filter(s => s.length > 10);
+            
+            let matchedSentences = [];
+            sentences.forEach(sentence => {
+                const sLow = sentence.toLowerCase();
+                let score = 0;
+                keywords.forEach(k => { if(sLow.includes(k)) score++; });
+                if(score > 0) matchedSentences.push({text: sentence, score: score});
+            });
+            
+            // Urutkan berdasarkan relevansi (score terbanyak)
+            if(matchedSentences.length > 0) {
+                matchedSentences.sort((a,b) => b.score - a.score);
+                // Ambil 2-3 kalimat terbaik
+                let bestMatches = matchedSentences.slice(0, 2).map(m => `"${m.text}"`).join("<br><br>• ");
+                response = `<b>💡 Berdasarkan analisa file yang Anda unggah sebelumnya:</b><br><br>• ${bestMatches}<br><br><i>Semoga temuan data di atas menjawab kebingungan Anda. Butuh analisa dari file lainnya?</i>`;
+            }
+        }
+    }
+
+    // 4. Default Jawaban jika tidak ada yang nyambung & belum upload file
+    if (!response) {
+       if (aiKnowledgeBase === "") {
+           response = "Hmm, pertanyaan Anda menarik tapi saya belum punya konteks datanya. Coba <b>lampirkan file Excel / Word / Foto</b> menggunakan ikon klip kertas (📎) di samping kolom ketik ini agar saya bisa analisa dan kasih rekomendasinya! 😉";
+       } else {
+           response = "Saya sudah menelusuri memori dokumen yang Anda upload, tapi sepertinya kata kunci yang Anda tanyakan tidak ditemukan secara pasti di sana. Bisa diperjelas lagi pertanyaannya?";
+       }
+    }
+
     appendAIChat("AI", response);
-  }, 800);
+  }, 1000); // Simulasi delay AI mikir (1 detik)
 }
 // ==================================================
 
 const API_URL = 'https://script.google.com/macros/s/AKfycbxDdtdla2-hoRDz66czD4TfbYGdaqpw2vi7jecJPaUisfRwUUgf1qGhIol6_VVUlXxT/exec';
 
-// Array Lokasi Valid (Hub Utama & Rumah untuk Tes)
 const ALLOWED_LOCATIONS = [
   { lat: -6.9356255322387295, lon: 107.6989397768731, name: "Hub JNE Utama" },
   { lat: -6.950416631576503, lon: 107.81136000887774, name: "Lokasi Rumah (Test)" }
@@ -1093,7 +1174,6 @@ function getGPSLocation() {
       (pos) => {
         let minDistance = Infinity;
         let closestLocationName = "";
-        // Cek ke setiap lokasi yang diizinkan (Hub & Rumah Test)
         ALLOWED_LOCATIONS.forEach(loc => {
            let dist = getDistance(pos.coords.latitude, pos.coords.longitude, loc.lat, loc.lon);
            if (dist < minDistance) {
@@ -1119,7 +1199,6 @@ async function fetchDatabase() {
       arrivalTime: row.arrivaltime, checkerName: row.checkername, status: row.status, unloadStartTime: row.unloadstart || null, unloadEndTime: row.unloadend || null, origin: row.origin
     }));
     
-    // Inisialisasi Filter & Analitik Armada
     populateFilters();
     processAnalitik();
     renderAll();
@@ -1266,7 +1345,6 @@ function sortTable(n) {
   }
 }
 
-// Menetapkan Halaman Default (Dashboard TV)
 fetchDatabase();
 setView('tv'); 
 setInterval(fetchDatabase, 15000);
