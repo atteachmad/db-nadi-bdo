@@ -922,14 +922,12 @@ function downloadFilteredData() {
 let aiKnowledgeBase = "";
 
 function saveToKnowledgeBase(filename, textData) {
-  // Membersihkan teks kotor agar tidak memakan RAM berlebih
   let cleanText = textData.replace(/(\r\n|\n|\r)/gm, " ").replace(/\s+/g, " ").trim();
   aiKnowledgeBase += `\n[File: ${filename}] Isi Data: ${cleanText}`;
   const sizeKB = Math.round(aiKnowledgeBase.length / 1024);
   document.getElementById('ai-memory-status').textContent = `Memori AI: Aktif (${sizeKB} KB Knowledge)`;
 }
 
-// Fungsi utama penanganan upload multi-file (dari tombol atas maupun klip kertas chat)
 async function processSmartUpload(inputId) {
   const fileInput = document.getElementById(inputId);
   const file = fileInput.files[0];
@@ -939,7 +937,6 @@ async function processSmartUpload(inputId) {
   appendAIChat("User", `<i>📎 Melampirkan File: <b>${file.name}</b></i>`);
   toast("⏳ AI NADI sedang memproses dokumen...");
 
-  // 1. Jika file berupa GAMBAR (OCR)
   if (['jpg', 'jpeg', 'png'].includes(ext) || file.type.startsWith('image/')) {
     appendAIChat("AI", "Saya sedang memindai tulisan di gambar tersebut. Mohon tunggu sebentar ya... 🔍");
     const reader = new FileReader();
@@ -957,12 +954,10 @@ async function processSmartUpload(inputId) {
     };
     reader.readAsDataURL(file);
   } 
-  // 2. Jika file berupa EXCEL (XLSX / XLS / CSV)
   else if (['xlsx', 'xls', 'csv'].includes(ext)) {
     const reader = new FileReader();
     reader.onload = function(e) {
       const data = new Uint8Array(e.target.result);
-      // Parsing menggunakan SheetJS
       const workbook = XLSX.read(data, {type: 'array'});
       const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
       const rawTextData = XLSX.utils.sheet_to_csv(firstSheet);
@@ -972,7 +967,6 @@ async function processSmartUpload(inputId) {
     };
     reader.readAsArrayBuffer(file);
   } 
-  // 3. Jika file Teks atau Word (Fallback ke FileReader dasar)
   else {
     const reader = new FileReader();
     reader.onload = function(e) {
@@ -982,7 +976,6 @@ async function processSmartUpload(inputId) {
     reader.readAsText(file);
   }
 
-  // Reset input agar bisa upload file yang sama lagi jika perlu
   fileInput.value = "";
 }
 
@@ -994,7 +987,6 @@ function appendAIChat(sender, msg) {
   
   const html = `<div style="padding: 10px 14px; border-radius: 12px; max-width: 85%; font-size: 13px; line-height: 1.5; ${align}"><b>${name}:</b><br>${msg}</div>`;
   box.innerHTML += html;
-  // Scroll mentok bawah
   box.scrollTop = box.scrollHeight;
 }
 
@@ -1010,7 +1002,6 @@ function sendAIChat() {
     let response = "";
     const lowerVal = val.toLowerCase();
 
-    // 1. Logika Santai & Natural (Conversational Chat)
     const greetings = ['halo', 'hai', 'pagi', 'siang', 'sore', 'malam', 'assalamualaikum'];
     const praises = ['mantap', 'keren', 'bagus', 'ok', 'oke', 'baik', 'sip', 'terima kasih', 'makasih', 'thanks'];
     const questionsAboutAI = ['siapa kamu', 'tentang ai', 'bisa apa saja', 'namamu siapa'];
@@ -1024,19 +1015,15 @@ function sendAIChat() {
     else if (questionsAboutAI.some(q => lowerVal.includes(q))) {
         response = "Saya adalah <b>Asisten AI NADI</b> (Dashboard Monitoring Armada), dikembangkan oleh <b>Bpk. Achmad Taufik</b>. Saya bertugas membantu Anda menganalisa telatnya *unloading*, merangkum dokumen lapangan, hingga membaca foto SOP. 😊";
     }
-    // 2. Logika Standar Operasional JNE/Logistik
     else if (lowerVal.includes("sla") || lowerVal.includes("kpi") || lowerVal.includes("telat") || lowerVal.includes("overdue") || lowerVal.includes("lama")) {
         response = "<b>📊 Solusi Operasional & SLA:</b><br>Menurut standar operasional NADI, batas wajar sebuah armada antri di Gate adalah <b>180 menit</b>.<br><br>💡 <b>Rekomendasi Presisi:</b> Jika alarm merah menyala, segera cek di menu 'Checker'. Alokasikan Checker yang sedang santai ke armada tipe *Large* (Fuso/Wingbox) agar bottleneck tidak merambat ke armada kecil.";
     }
     
-    // 3. Logika Pencarian Cerdas ke dalam Memori File Upload (Contextual Vector Search Simulation)
     if (aiKnowledgeBase !== "" && !response) {
-        // Memecah kata kunci dari chat user (buang kata sambung yang umum)
         const stopwords = ['dan', 'atau', 'di', 'ke', 'dari', 'yang', 'ini', 'itu', 'tolong', 'cari', 'apa', 'bagaimana'];
         const keywords = lowerVal.split(" ").filter(w => w.length > 3 && !stopwords.includes(w));
         
         if (keywords.length > 0) {
-            // Pecah Knowledge Base menjadi kalimat/baris
             const sentences = aiKnowledgeBase.split(/[.?!]/).map(s => s.trim()).filter(s => s.length > 10);
             
             let matchedSentences = [];
@@ -1047,17 +1034,14 @@ function sendAIChat() {
                 if(score > 0) matchedSentences.push({text: sentence, score: score});
             });
             
-            // Urutkan berdasarkan relevansi (score terbanyak)
             if(matchedSentences.length > 0) {
                 matchedSentences.sort((a,b) => b.score - a.score);
-                // Ambil 2-3 kalimat terbaik
                 let bestMatches = matchedSentences.slice(0, 2).map(m => `"${m.text}"`).join("<br><br>• ");
                 response = `<b>💡 Berdasarkan analisa file yang Anda unggah sebelumnya:</b><br><br>• ${bestMatches}<br><br><i>Semoga temuan data di atas menjawab kebingungan Anda. Butuh analisa dari file lainnya?</i>`;
             }
         }
     }
 
-    // 4. Default Jawaban jika tidak ada yang nyambung & belum upload file
     if (!response) {
        if (aiKnowledgeBase === "") {
            response = "Hmm, pertanyaan Anda menarik tapi saya belum punya konteks datanya. Coba <b>lampirkan file Excel / Word / Foto</b> menggunakan ikon klip kertas (📎) di samping kolom ketik ini agar saya bisa analisa dan kasih rekomendasinya! 😉";
@@ -1067,17 +1051,20 @@ function sendAIChat() {
     }
 
     appendAIChat("AI", response);
-  }, 1000); // Simulasi delay AI mikir (1 detik)
+  }, 1000);
 }
 // ==================================================
 
 const API_URL = 'https://script.google.com/macros/s/AKfycbxDdtdla2-hoRDz66czD4TfbYGdaqpw2vi7jecJPaUisfRwUUgf1qGhIol6_VVUlXxT/exec';
 
+// MODIFIED: Menggabungkan koordinat utama, koordinat rumah tes, dan koordinat tambahan baru dengan radius 100m
 const ALLOWED_LOCATIONS = [
   { lat: -6.9356255322387295, lon: 107.6989397768731, name: "Hub JNE Utama" },
-  { lat: -6.950416631576503, lon: 107.81136000887774, name: "Lokasi Rumah (Test)" }
+  { lat: -6.950416631576503, lon: 107.81136000887774, name: "Lokasi Rumah (Test)" },
+  { lat: -6.936258, lon: 107.698784, name: "Lokasi Tambahan 1" },
+  { lat: -6.9504251172266125, lon: 107.81136520908176, name: "Lokasi Tambahan 2" }
 ];
-const MAX_RADIUS_METER = 200;
+const MAX_RADIUS_METER = 1000;
 
 const FLEET_SIZES = { small: ['Blandvan','L300'], medium: ['CDD','CDE','CDEL','Truck'], large: ['Fuso','Wingbox','Tronton'] };
 const KPI_UNLOAD = { small:20, medium:60, large:120 }; 
@@ -1167,6 +1154,7 @@ function getDistance(lat1, lon1, lat2, lon2) {
   return R * c; 
 }
 
+// OPTIMIZED: Memperbaiki akurasi pembacaan GPS untuk browser Mobile Android/iOS
 function getGPSLocation() {
   return new Promise((resolve, reject) => {
     if (!navigator.geolocation) { reject("HP tidak mendukung GPS."); return; }
@@ -1183,8 +1171,13 @@ function getGPSLocation() {
         });
         resolve({ lat: pos.coords.latitude, lon: pos.coords.longitude, distance: minDistance, locationName: closestLocationName }); 
       },
-      () => { reject("Akses GPS ditolak!"); },
-      { enableHighAccuracy: true, timeout: 6000, maximumAge: 0 }
+      (err) => { 
+        // Penanganan error kode izin perangkat secara spesifik
+        if(err.code === 1) reject("Akses GPS ditolak! Aktifkan izin lokasi browser di pengaturan HP.");
+        else if(err.code === 2) reject("Sinyal GPS lemah atau tidak terdeteksi.");
+        else reject("Akses GPS Terputus.");
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
     );
   });
 }
@@ -1217,12 +1210,15 @@ async function submitArrival() {
   toast('⏳ Memverifikasi GPS...');
   try {
     const loc = await getGPSLocation();
-    if (loc.distance > MAX_RADIUS_METER) { toast(`❌ DITOLAK: Anda berada ${Math.round(loc.distance)}m di luar radius semua lokasi valid!`, 'err'); return; }
+    if (loc.distance > MAX_RADIUS_METER) { 
+      toast(`❌ DITOLAK: Jarak Anda ${Math.round(loc.distance)}m di luar radius lokasi valid!`, 'err'); 
+      return; 
+    }
     toast('⏳ Menyimpan...');
     await fetch(API_URL, { method: 'POST', body: JSON.stringify({ action: 'addArrival', id: 'ARR-' + Date.now().toString().slice(-6), securityName: secName, driver: driver, plate: plate, origin: origin, type: type, size: getSize(type), arrivalTime: new Date().toISOString(), gpsLog: `GPS OK (${Math.round(loc.distance)}m dari ${loc.locationName})` })});
     document.getElementById('f-plate').value = ''; document.getElementById('f-driver').value = ''; document.getElementById('f-origin').value = '';
     await fetchDatabase(); toast('✅ Kedatangan Berhasil Valid!');
-  } catch(err) { toast('❌ GPS ERROR: ' + err, 'err'); }
+  } catch(err) { toast('❌ ' + err, 'err'); }
 }
 
 function updateCheckerFilter() {
@@ -1260,20 +1256,20 @@ async function startUnloading(id) {
   toast('⏳ Memverifikasi GPS...');
   try {
     const loc = await getGPSLocation();
-    if (loc.distance > MAX_RADIUS_METER) { toast(`❌ DITOLAK: Anda berada ${Math.round(loc.distance)}m di luar radius semua lokasi valid!`, 'err'); return; }
+    if (loc.distance > MAX_RADIUS_METER) { toast(`❌ DITOLAK: Jarak Anda ${Math.round(loc.distance)}m di luar radius lokasi valid!`, 'err'); return; }
     await fetch(API_URL, { method: 'POST', body: JSON.stringify({ action: 'updateStatus', id: id, status: 'unloading', checkerName: cName, startTime: new Date().toISOString(), gpsLog: `GPS OK (${Math.round(loc.distance)}m dari ${loc.locationName})` }) });
     await fetchDatabase(); toast('🔄 Unloading Berhasil Dimulai!');
-  } catch(err) { toast('❌ GPS ERROR: ' + err, 'err'); }
+  } catch(err) { toast('❌ ' + err, 'err'); }
 }
 
 async function finishUnloading(id) {
   toast('⏳ Memverifikasi GPS...');
   try {
     const loc = await getGPSLocation();
-    if (loc.distance > MAX_RADIUS_METER) { toast(`❌ DITOLAK: Jauh dari Hub JNE maupun titik Test!`, 'err'); return; }
+    if (loc.distance > MAX_RADIUS_METER) { toast(`❌ DITOLAK: Jarak Anda ${Math.round(loc.distance)}m di luar radius lokasi valid!`, 'err'); return; }
     await fetch(API_URL, { method: 'POST', body: JSON.stringify({ action: 'updateStatus', id: id, status: 'done', endTime: new Date().toISOString(), gpsLog: `GPS OK (${Math.round(loc.distance)}m dari ${loc.locationName})` }) });
     await fetchDatabase(); toast('✅ Unloading Selesai!');
-  } catch(err) { toast('❌ GPS ERROR: ' + err, 'err'); }
+  } catch(err) { toast('❌ ' + err, 'err'); }
 }
 
 function getKPIStatus(elapsedTime, maxTime) {
