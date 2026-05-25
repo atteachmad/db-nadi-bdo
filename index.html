@@ -599,7 +599,7 @@
   <div class="modal-box">
     <span class="modal-close" onclick="closeModal('modalAbout')">✖</span>
     <div class="modal-title">About DB-NADI</div>
-    <div class="modal-body">
+    <div class="modal-box-body modal-body">
       <p><b>DB-NADI (Dashboard NADI)</b> adalah sistem monitoring terpadu antrian dan operasional bongkar muat secara Real-Time.</p><br>
       <p><b>Versi Sistem:</b><br>
       - v1.0: Inisialisasi awal UI Mobile.<br>
@@ -1057,17 +1057,11 @@ function sendAIChat() {
 
 const API_URL = 'https://script.google.com/macros/s/AKfycbxDdtdla2-hoRDz66czD4TfbYGdaqpw2vi7jecJPaUisfRwUUgf1qGhIol6_VVUlXxT/exec';
 
-// MODIFIED: Menggabungkan koordinat utama, koordinat rumah tes, dan koordinat tambahan baru dengan radius 100m
 const ALLOWED_LOCATIONS = [
   { lat: -6.9356255322387295, lon: 107.6989397768731, name: "Hub JNE Utama" },
   { lat: -6.950416631576503, lon: 107.81136000887774, name: "Lokasi Rumah (Test)" },
-  { lat: -6.936069, lon: 107.698747, name: "Lokasi Tambahan 1" },
-  { lat: -6.936103, lon: 107.698861, name: "Lokasi Tambahan 2" },
-  { lat: -6.936119, lon: 107.698922, name: "Lokasi Tambahan 3" },
-  { lat: -6.936140, lon: 107.698993, name: "Lokasi Tambahan 4" },
-  { lat: -6.936165, lon: 107.699080, name: "Lokasi Tambahan 5" },
-  { lat: -6.9362993947558715, lon: 107.69874113158971, name: "Lokasi Tambahan 6" },
-  { lat: --6.936318, lon: 107.698823, name: "Lokasi Tambahan 7" }
+  { lat: -6.936258, lon: 107.698784, name: "Lokasi Tambahan 1" },
+  { lat: -6.9504251172266125, lon: 107.81136520908176, name: "Lokasi Tambahan 2" }
 ];
 const MAX_RADIUS_METER = 1000;
 
@@ -1085,7 +1079,7 @@ function closeModal(id) { document.getElementById(id).style.display = 'none'; }
 
 function startDictation(inputId, iconEl) {
   if (window.hasOwnProperty('webkitSpeechRecognition') || window.hasOwnProperty('SpeechRecognition')) {
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const SpeechRecognition = window.Windows || window.webkitSpeechRecognition;
     const recognition = new SpeechRecognition();
     recognition.lang = "id-ID"; recognition.continuous = false; recognition.interimResults = false;
     iconEl.classList.add("active"); toast("Mendengarkan... Silakan bicara", "ok");
@@ -1159,31 +1153,16 @@ function getDistance(lat1, lon1, lat2, lon2) {
   return R * c; 
 }
 
-// OPTIMIZED: Memperbaiki akurasi pembacaan GPS untuk browser Mobile Android/iOS
+// MODIFIED: Diubah agar mengabaikan batasan geofencing asli sehingga bisa di-input dari mana saja
 function getGPSLocation() {
-  return new Promise((resolve, reject) => {
-    if (!navigator.geolocation) { reject("HP tidak mendukung GPS."); return; }
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        let minDistance = Infinity;
-        let closestLocationName = "";
-        ALLOWED_LOCATIONS.forEach(loc => {
-           let dist = getDistance(pos.coords.latitude, pos.coords.longitude, loc.lat, loc.lon);
-           if (dist < minDistance) {
-              minDistance = dist;
-              closestLocationName = loc.name;
-           }
-        });
-        resolve({ lat: pos.coords.latitude, lon: pos.coords.longitude, distance: minDistance, locationName: closestLocationName }); 
-      },
-      (err) => { 
-        // Penanganan error kode izin perangkat secara spesifik
-        if(err.code === 1) reject("Akses GPS ditolak! Aktifkan izin lokasi browser di pengaturan HP.");
-        else if(err.code === 2) reject("Sinyal GPS lemah atau tidak terdeteksi.");
-        else reject("Akses GPS Terputus.");
-      },
-      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
-    );
+  return new Promise((resolve) => {
+    // bypass otomatis untuk keperluan testing di lokasi manapun
+    resolve({ 
+      lat: -6.9504166, 
+      lon: 107.81136, 
+      distance: 0, 
+      locationName: "Bypass (Kondisi Tes)" 
+    });
   });
 }
 
@@ -1215,12 +1194,8 @@ async function submitArrival() {
   toast('⏳ Memverifikasi GPS...');
   try {
     const loc = await getGPSLocation();
-    if (loc.distance > MAX_RADIUS_METER) { 
-      toast(`❌ DITOLAK: Jarak Anda ${Math.round(loc.distance)}m di luar radius lokasi valid!`, 'err'); 
-      return; 
-    }
     toast('⏳ Menyimpan...');
-    await fetch(API_URL, { method: 'POST', body: JSON.stringify({ action: 'addArrival', id: 'ARR-' + Date.now().toString().slice(-6), securityName: secName, driver: driver, plate: plate, origin: origin, type: type, size: getSize(type), arrivalTime: new Date().toISOString(), gpsLog: `GPS OK (${Math.round(loc.distance)}m dari ${loc.locationName})` })});
+    await fetch(API_URL, { method: 'POST', body: JSON.stringify({ action: 'addArrival', id: 'ARR-' + Date.now().toString().slice(-6), securityName: secName, driver: driver, plate: plate, origin: origin, type: type, size: getSize(type), arrivalTime: new Date().toISOString(), gpsLog: `GPS OK (Bypass Mode)` })});
     document.getElementById('f-plate').value = ''; document.getElementById('f-driver').value = ''; document.getElementById('f-origin').value = '';
     await fetchDatabase(); toast('✅ Kedatangan Berhasil Valid!');
   } catch(err) { toast('❌ ' + err, 'err'); }
@@ -1260,9 +1235,7 @@ async function startUnloading(id) {
   if(!cName) { toast('❌ Nama Checker wajib diisi!','err'); return; }
   toast('⏳ Memverifikasi GPS...');
   try {
-    const loc = await getGPSLocation();
-    if (loc.distance > MAX_RADIUS_METER) { toast(`❌ DITOLAK: Jarak Anda ${Math.round(loc.distance)}m di luar radius lokasi valid!`, 'err'); return; }
-    await fetch(API_URL, { method: 'POST', body: JSON.stringify({ action: 'updateStatus', id: id, status: 'unloading', checkerName: cName, startTime: new Date().toISOString(), gpsLog: `GPS OK (${Math.round(loc.distance)}m dari ${loc.locationName})` }) });
+    await fetch(API_URL, { method: 'POST', body: JSON.stringify({ action: 'updateStatus', id: id, status: 'unloading', checkerName: cName, startTime: new Date().toISOString(), gpsLog: `GPS OK (Bypass Mode)` }) });
     await fetchDatabase(); toast('🔄 Unloading Berhasil Dimulai!');
   } catch(err) { toast('❌ ' + err, 'err'); }
 }
@@ -1270,9 +1243,7 @@ async function startUnloading(id) {
 async function finishUnloading(id) {
   toast('⏳ Memverifikasi GPS...');
   try {
-    const loc = await getGPSLocation();
-    if (loc.distance > MAX_RADIUS_METER) { toast(`❌ DITOLAK: Jarak Anda ${Math.round(loc.distance)}m di luar radius lokasi valid!`, 'err'); return; }
-    await fetch(API_URL, { method: 'POST', body: JSON.stringify({ action: 'updateStatus', id: id, status: 'done', endTime: new Date().toISOString(), gpsLog: `GPS OK (${Math.round(loc.distance)}m dari ${loc.locationName})` }) });
+    await fetch(API_URL, { method: 'POST', body: JSON.stringify({ action: 'updateStatus', id: id, status: 'done', endTime: new Date().toISOString(), gpsLog: `GPS OK (Bypass Mode)` }) });
     await fetchDatabase(); toast('✅ Unloading Selesai!');
   } catch(err) { toast('❌ ' + err, 'err'); }
 }
