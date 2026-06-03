@@ -189,17 +189,17 @@
       box-shadow: inset 3px 3px 6px rgba(0,0,0,0.5), inset -3px -3px 6px rgba(255,255,255,0.04);
     }
  
-  [data-theme="light"] .skeuo-card {
+   [data-theme="light"] .skeuo-card {
       box-shadow: 6px 6px 12px #d1d9e6, -6px -6px 12px #ffffff;
       border: none;
     }
-  [data-theme="light"] .skeuo-input {
+   [data-theme="light"] .skeuo-input {
       box-shadow: inset 4px 4px 8px #d1d9e6, inset -4px -4px 8px #ffffff;
     }
-  [data-theme="light"] .skeuo-btn {
+   [data-theme="light"] .skeuo-btn {
       box-shadow: 4px 4px 8px #d1d9e6, -4px -4px 8px #ffffff;
     }
-  [data-theme="light"] .skeuo-btn:active {
+   [data-theme="light"] .skeuo-btn:active {
       box-shadow: inset 4px 4px 8px #d1d9e6, inset -4px -4px 8px #ffffff;
     }
  
@@ -325,11 +325,10 @@
        <li><a href="#">Perbandingan Periode</a></li>
       </ul>
     </li>
-    <li class="has-submenu">
+    <li class="has-submenu open">
       <a href="#" class="toggle-submenu"><i class="fa-solid fa-users-gear"></i> Manajemen Sentimen <i class="fa-solid fa-chevron-down caret"></i></a>
-      <ul class="submenu">
-       <li><a href="#" onclick="setView('manajemen-agen'); closeSidebar();">Daftar Warehouse</a></li>
-       <li><a href="#" onclick="setView('manajemen-agen'); closeSidebar();">Top Performa</a></li>
+      <ul class="submenu" style="max-height: 150px;">
+       <li><a href="#" onclick="setView('manajemen-agen'); closeSidebar();" class="active">Daftar Warehouse</a></li>
        <li><a href="#" onclick="setView('manajemen-agen'); closeSidebar();">Monitoring Area</a></li>
       </ul>
     </li>
@@ -598,7 +597,7 @@
   </div>
 </div>
  
-<div id="view-manajemen-agen" class="view active">
+<div id="view-manajemen-agen" class="view">
   <div class="tv-wrap">
     <div class="tv-header">
       <div class="tv-branding">
@@ -649,7 +648,12 @@
             <option value="AGEN">AGEN</option>
             <option value="CASH COUNTER">CASH COUNTER</option>
             <option value="CUSTOMER">CUSTOMER</option>
-            <option value="KOMPETITOR">KOMPETITOR</option>
+            <option value="J&T EXPRESS">J&T EXPRESS</option>
+            <option value="NINJA XPRESS">NINJA XPRESS</option>
+            <option value="ID EXPRESS">ID EXPRESS</option>
+            <option value="SICEPAT">SICEPAT</option>
+            <option value="ANTERAJA">ANTERAJA</option>
+            <option value="SPX EXPRESS">SPX EXPRESS</option>
          </select>
         </div>
         <div>
@@ -726,9 +730,9 @@
           <div class="live-dot" style="color: var(--blue);">DATA INTEGRATED</div>
         </div>
       </div>
-      <div class="table-wrap">
+      <div class="table-wrap" style="max-height: 385px; overflow-y: auto;">
         <table id="agentMainTable">
-         <thead>
+         <thead style="position: sticky; top: 0; background: var(--surface); z-index: 10;">
             <tr>
               <th onclick="sortAgentTable(0)">Nama Agen <i class="fa-solid fa-sort"></i></th>
               <th onclick="sortAgentTable(1)">Rating <i class="fa-solid fa-sort"></i></th>
@@ -1135,19 +1139,19 @@ async function processSmartUpload(inputId) {
  
   if (['jpg', 'jpeg', 'png'].includes(ext) || file.type.startsWith('image/')) {
   appendAIChat("AI", "Saya sedang memindai tulisan di gambar tersebut. Mohon tunggu sebentar ya... 🔍");
-    const reader = new FileReader();
-    reader.onload = function() {
-    Tesseract.recognize(reader.result, 'ind', { logger: m => console.log(m) })
-        .then(({ data: { text } }) => {
-        if(text.trim().length < 2) {
-          appendAIChat("AI", "Hmm, teks di gambarnya kurang jelas atau tidak terbaca. Boleh coba foto yang lebih terang? 😅");
-            return;
-          }
-        saveToKnowledgeBase(file.name, text);
-        appendAIChat("AI", `✅ Gambar <b>${file.name}</b> berhasil saya baca dan rekam. Mau saya simpulkan isinya atau mencari info spesifik dari foto itu?`);
-        })
-        .catch(err => { toast("❌ Gagal memproses OCR Gambar", "err"); });
-    };
+      const reader = new FileReader();
+      reader.onload = function() {
+      Tesseract.recognize(reader.result, 'ind', { logger: m => console.log(m) })
+          .then(({ data: { text } }) => {
+          if(text.trim().length < 2) {
+            appendAIChat("AI", "Hmm, teks di gambarnya kurang jelas atau tidak terbaca. Boleh coba foto yang lebih terang? 😅");
+              return;
+            }
+          saveToKnowledgeBase(file.name, text);
+          appendAIChat("AI", `✅ Gambar <b>${file.name}</b> berhasil saya baca dan rekam. Mau saya simpulkan isinya atau mencari info spesifik dari foto itu?`);
+          })
+          .catch(err => { toast("❌ Gagal memproses OCR Gambar", "err"); });
+      };
   reader.readAsDataURL(file);
   } 
   else if (['xlsx', 'xls', 'csv'].includes(ext)) {
@@ -1395,7 +1399,7 @@ async function fetchDatabase() {
           id: row.id, secName: row.securityname, driverName: row.driver, plateNumber: row.plate, 
           fleetType: row.type, fleetSize: row.size, arrivalTime: row.arrivaltime, 
           checkerName: row.checkername, status: row.status, unloadStartTime: row.unloadstart || null, 
-         unloadEndTime: row.unloadend || null, origin: row.origin
+          unloadEndTime: row.unloadend || null, origin: row.origin
         }));
     }
  
@@ -1436,7 +1440,7 @@ async function fetchDatabase() {
         }
  
         if (item.Teks_Ulasan && item.Teks_Ulasan.trim() !== "") {
-         reviewsList.push({
+          reviewsList.push({
             Nama_Agen: namaAgen,
            Kategori_Warehouse: katWH,
             Kategori: kat,
@@ -1451,7 +1455,7 @@ async function fetchDatabase() {
  
       masterAgentData = Array.from(uniqueAgents.values());
       masterReviewData = reviewsList;
-     populateAgentFilters(); 
+      populateAgentFilters(); 
     }
  
     populateFilters();
@@ -1459,8 +1463,8 @@ async function fetchDatabase() {
     
     const activeView = document.querySelector('.view.active');
     if (activeView && activeView.id === 'view-manajemen-agen') {
-     // Lewati re-render map otomatis (parameter true) saat refresh interval agar ringan & smooth
-     triggerAgentAnalytics(true);
+      // Lewati re-render map otomatis (parameter true) saat refresh interval agar ringan & smooth
+      triggerAgentAnalytics(true);
     }
     
     renderAll();
@@ -1571,7 +1575,7 @@ function renderTV() {
   const tbody = document.getElementById('tv-tbody'); if (!tbody) return;
   const activeFleets = fleets.filter(f => f.status && f.status.toLowerCase() !== 'done');
   let violations = 0; let playHighAlarm = false; let playLowAlarm = false;
- 
+  
   const enrichedFleets = activeFleets.map(f => {
     const status = f.status.toLowerCase();
     const qDur = f.arrivalTime ? elapsed(f.arrivalTime, f.unloadStartTime) : 0;
@@ -1587,7 +1591,7 @@ function renderTV() {
     f.priorityScore = Math.max(qStat.isCrit, uStat.isCrit);
     f.qDur = qDur; f.qStat = qStat; f.uDur = uDur; f.uStat = uStat; return f;
   });
- 
+  
   if (playHighAlarm) playAlarm('critical');
   else if (playLowAlarm) playAlarm('warning');
  
@@ -1674,54 +1678,56 @@ function triggerAgentAnalytics(skipMap = false) {
           }
           return true;
       });
-     document.getElementById('cross-filter-indicator').style.display = 'flex';
-     document.getElementById('cf-text').textContent = activeCrossFilter.value;
+      document.getElementById('cross-filter-indicator').style.display = 'flex';
+      document.getElementById('cf-text').textContent = activeCrossFilter.value;
   } else {
-     document.getElementById('cross-filter-indicator').style.display = 'none';
+      document.getElementById('cross-filter-indicator').style.display = 'none';
   }
  
   // 3. Saring Daftar Ulasan
   const allowedAgentNames = new Set(filteredAgents.map(a => a.Nama_Agen));
   const filteredReviews = masterReviewData.filter(item => allowedAgentNames.has(item.Nama_Agen));
  
- updateAgentKPIs(filteredAgents);
+  updateAgentKPIs(filteredAgents);
  
   // Map di-render hanya saat user filter dropdown / cross-filter manual. Interval Auto-Update tidak memicu agar tidak flicker.
   if (skipMap !== true) {
-      renderAgentMap(filteredAgents);
+       renderAgentMap(filteredAgents);
   }
  
- renderAgentReviews(filteredReviews);
- renderAgentCharts(filteredAgents);
- renderAgentTable(filteredAgents);
+  renderAgentReviews(filteredReviews);
+  renderAgentCharts(filteredAgents);
+  renderAgentTable(filteredAgents);
 }
  
+// MODIFIKASI FITUR 1: Memperbaiki pencarian Parameter Jumlah Kompetitor agar case-insensitive
 function updateAgentKPIs(data) {
   let totalRating = 0, totalReviews = 0, locCount = 0;
   data.forEach(item => {
-    if (item.Kategori_Warehouse !== 'CUSTOMER' && item.Kategori_Warehouse !== 'KOMPETITOR') {
+    if (item.Kategori !== 'CUSTOMER' && item.Kategori !== 'KOMPETITOR') {
       totalRating += (parseFloat(item.Rating) || 0);
-    if((parseFloat(item.Rating) || 0) > 0) locCount++;
+      if((parseFloat(item.Rating) || 0) > 0) locCount++;
     }
     totalReviews += (parseInt(item.Total_Ulasan) || 0);
   });
   
- document.getElementById('ag-kpi-rating').textContent = locCount > 0 ? (totalRating / locCount).toFixed(1) : "0.0";
- document.getElementById('ag-kpi-reviews').textContent = totalReviews.toLocaleString('id-ID');
- document.getElementById('ag-kpi-locations').textContent = data.filter(i => ['WAREHOUSE','AGEN','CASH COUNTER'].includes(i.Kategori_Warehouse)).length;
- document.getElementById('ag-kpi-matched').textContent = data.length;
- document.getElementById('ag-kpi-kompetitor').textContent = data.filter(i => i.Kategori_Warehouse === 'KOMPETITOR').length;
+  document.getElementById('ag-kpi-rating').textContent = locCount > 0 ? (totalRating / locCount).toFixed(1) : "0.0";
+  document.getElementById('ag-kpi-reviews').textContent = totalReviews.toLocaleString('id-ID');
+  document.getElementById('ag-kpi-locations').textContent = data.filter(i => ['WAREHOUSE','AGEN','CASH COUNTER'].includes(i.Kategori_Warehouse)).length;
+  document.getElementById('ag-kpi-matched').textContent = data.length;
+  document.getElementById('ag-kpi-kompetitor').textContent = data.filter(i => i.Kategori && i.Kategori.toLowerCase() === 'kompetitor').length;
 }
-
+ 
 let hoverPolylines = [];
 function clearHoverLines() {
     hoverPolylines.forEach(p => agentMap.removeLayer(p));
     hoverPolylines = [];
 }
  
+// MODIFIKASI FITUR 2 & 3: Penambahan kalkulasi Jarak Terdekat + Link Google Maps Rute Terintegrasi
 function renderAgentMap(data) {
   mapMarkers.forEach(m => agentMap.removeLayer(m));
- mapPolylines.forEach(p => agentMap.removeLayer(p));
+  mapPolylines.forEach(p => agentMap.removeLayer(p));
   mapMarkers = []; mapPolylines = [];
  
   if (data.length === 0) return;
@@ -1740,65 +1746,90 @@ function renderAgentMap(data) {
  
     const customMarker = L.marker([item.Latitude, item.Longitude], { icon: markerIcon }).addTo(agentMap);
  
-    // Hover Modern Tooltip
+    // Kalkulasi Jarak Terdekat Khusus Entitas JNE ke Kompetitor & Customer Terdekat
+    let nearestComp = null;
+    let minCompDist = Infinity;
+    let nearestCust = null;
+    let minCustDist = Infinity;
+    let distanceHTML = "";
+    let gmapsUrl = item.Link_Maps || `https://www.google.com/maps/search/?api=1&query=${item.Latitude},${item.Longitude}`;
+ 
+    if (item.Kategori !== 'Kompetitor' && item.Kategori !== 'Customer') {
+        data.forEach(subItem => {
+            if (subItem.Latitude && subItem.Longitude) {
+                let d = getDistance(item.Latitude, item.Longitude, subItem.Latitude, subItem.Longitude);
+                if (subItem.Kategori && subItem.Kategori.toLowerCase() === 'kompetitor') {
+                    if (d < minCompDist) { minCompDist = d; nearestComp = subItem; }
+                } else if (subItem.Kategori && subItem.Kategori.toLowerCase() === 'customer') {
+                    if (d < minCustDist) { minCustDist = d; nearestCust = subItem; }
+                }
+            }
+        });
+ 
+        let cText = nearestComp ? `${nearestComp.Nama_Agen} (${minCompDist < 1000 ? Math.round(minCompDist) + ' m' : (minCompDist/1000).toFixed(2) + ' km'})` : '-';
+        let custText = nearestCust ? `${nearestCust.Nama_Agen} (${minCustDist < 1000 ? Math.round(minCustDist) + ' m' : (minCustDist/1000).toFixed(2) + ' km'})` : '-';
+ 
+        distanceHTML = `
+            <div style="margin-top: 6px; padding-top: 6px; border-top: 1px dashed rgba(255,255,255,0.2); font-size: 11px; text-align: left; line-height: 1.3;">
+                <span style="color: #ef4444;"><i class="fa-solid fa-store"></i> <b>Komp Terdekat:</b><br>${cText}</span><br>
+                <span style="color: #10b981;"><i class="fa-solid fa-house-user"></i> <b>Cust Terdekat:</b><br>${custText}</span>
+            </div>
+        `;
+ 
+        // Mengubah URL Maps menjadi Rute Terintegrasi jika entitas terdekat valid ditemukan
+        if (nearestComp && nearestCust) {
+            gmapsUrl = `https://www.google.com/maps/dir/?api=1&origin=${item.Latitude},${item.Longitude}&destination=${nearestComp.Latitude},${nearestComp.Longitude}&waypoints=${nearestCust.Latitude},${nearestCust.Longitude}`;
+        } else if (nearestCust) {
+            gmapsUrl = `https://www.google.com/maps/dir/?api=1&origin=${item.Latitude},${item.Longitude}&destination=${nearestCust.Latitude},${nearestCust.Longitude}`;
+        } else if (nearestComp) {
+            gmapsUrl = `https://www.google.com/maps/dir/?api=1&origin=${item.Latitude},${item.Longitude}&destination=${nearestComp.Latitude},${nearestComp.Longitude}`;
+        }
+    }
+ 
+    // Hover Modern Tooltip terisi info jarak komprehensif
     const tooltipHTML = `
-        <div style="text-align:center; font-family:'Nunito',sans-serif;">
+        <div style="text-align:center; font-family:'Nunito',sans-serif; min-width: 150px;">
             <div style="color:var(--blue);font-size:14px;font-weight:bold;margin-bottom:4px;border-bottom:1px solid rgba(255,255,255,0.1);padding-bottom:4px;">${item.Nama_Agen}</div>
             <div style="color:var(--amber);font-size:12px;font-weight:bold;">⭐ ${item.Rating > 0 ? item.Rating : '-'} | 💬 ${item.Total_Ulasan} Ulasan</div>
             <div style="color:var(--green);font-size:10px;text-transform:uppercase;margin-top:4px;">${item.Kategori_Warehouse}</div>
+            ${distanceHTML}
         </div>
     `;
-   customMarker.bindTooltip(tooltipHTML, { direction: 'top', offset: [0, -20], className: 'modern-tooltip' });
+    customMarker.bindTooltip(tooltipHTML, { direction: 'top', offset: [0, -20], className: 'modern-tooltip' });
     
-    // Popup interaktif saat diklik
+    // Popup interaktif saat diklik memicu link rute otomatis ke Google Maps
     const popupHTML = `
         <div style="text-align:center; padding: 5px; font-family:'Nunito',sans-serif;">
             <div style="color:var(--amber); font-size: 14px; font-weight:bold; margin-bottom: 8px;">${item.Nama_Agen}</div>
-            <a href="${item.Link_Maps}" target="_blank" style="background:var(--blue); color:#fff; padding:6px 12px; border-radius:6px; text-decoration:none; font-size:12px; font-weight:bold; display:inline-block;">📍 Buka di Google Maps</a>
+            <a href="${gmapsUrl}" target="_blank" style="background:var(--blue); color:#fff; padding:6px 12px; border-radius:6px; text-decoration:none; font-size:12px; font-weight:bold; display:inline-block;"><i class="fa-solid fa-map"></i> Buka Google Maps Rute</a>
         </div>
     `;
     customMarker.bindPopup(popupHTML, {className: 'modern-popup'});
     
     customMarker.on('click', () => { 
-       setCrossFilter('AGENT', item.Nama_Agen); 
+        setCrossFilter('AGENT', item.Nama_Agen); 
     });
-
+ 
     customMarker.on('mouseover', function() {
         this.openTooltip();
-        
-        // Garis muncul jika yang di-hover adalah JNE
-        if (['WAREHOUSE', 'AGEN', 'CASH COUNTER'].includes(item.Kategori_Warehouse)) {
+        if (['JNE', 'Kompetitor'].includes(item.Kategori) || item.Kategori.toLowerCase() === 'kompetitor') {
             clearHoverLines();
-            
-            // Jarak Customer Terdekat
-            let nCust = null, minDistCust = Infinity;
-            data.filter(i => i.Kategori_Warehouse === 'CUSTOMER').forEach(c => {
-                let d = getDistance(item.Latitude, item.Longitude, c.Latitude, c.Longitude);
-                if (d < minDistCust) { minDistCust = d; nCust = c; }
-            });
-            if (nCust) {
-                const polyCust = L.polyline([[item.Latitude, item.Longitude], [nCust.Latitude, nCust.Longitude]], {color: '#10b981', weight: 2, dashArray: '5, 8'}).addTo(agentMap);
+            if (nearestCust) {
+                const polyCust = L.polyline([[item.Latitude, item.Longitude], [nearestCust.Latitude, nearestCust.Longitude]], {color: '#10b981', weight: 2, dashArray: '5, 8'}).addTo(agentMap);
                 hoverPolylines.push(polyCust);
             }
-
-            // Jarak Kompetitor Terdekat
-            let nComp = null, minDistComp = Infinity;
-            data.filter(i => i.Kategori_Warehouse === 'KOMPETITOR').forEach(c => {
-                let d = getDistance(item.Latitude, item.Longitude, c.Latitude, c.Longitude);
-                if (d < minDistComp) { minDistComp = d; nComp = c; }
-            });
-            if (nComp) {
-                const polyComp = L.polyline([[item.Latitude, item.Longitude], [nComp.Latitude, nComp.Longitude]], {color: '#ef4444', weight: 2, dashArray: '5, 8'}).addTo(agentMap);
+            if (nearestComp) {
+                const polyComp = L.polyline([[item.Latitude, item.Longitude], [nearestComp.Latitude, nearestComp.Longitude]], {color: '#ef4444', weight: 2, dashArray: '5, 8'}).addTo(agentMap);
                 hoverPolylines.push(polyComp);
             }
         }
     });
-
+ 
     customMarker.on('mouseout', function() {
         this.closeTooltip();
         clearHoverLines();
     });
-
+ 
   mapMarkers.push(customMarker);
   });
  
@@ -1820,7 +1851,7 @@ function renderAgentReviews(reviewData) {
  
   const limitedReviews = reviewData.slice(0, 50);
  
- limitedReviews.forEach(item => {
+  limitedReviews.forEach(item => {
     totalScore += (item.Rating_Ulasan || 0);
     let sentimentClass = "sent-neu"; let sentText = "NETRAL";
     if (item.Rating_Ulasan >= 4.0) { sentimentClass = "sent-pos"; sentText = "POSITIF"; }
@@ -1912,9 +1943,9 @@ function renderAgentCharts(data) {
   }
  
   // Chart 3 (Donut dengan Hitungan di Label)
-  const jneCount = data.filter(i => ['WAREHOUSE','AGEN','CASH COUNTER'].includes(i.Kategori_Warehouse)).length;
-  const kompCount = data.filter(i => i.Kategori_Warehouse === 'KOMPETITOR').length;
-  const custCount = data.filter(i => i.Kategori_Warehouse === 'CUSTOMER').length;
+  const jneCount = data.filter(i => ['JNE'].includes(i.Kategori)).length;
+  const kompCount = data.filter(i => i.Kategori === 'Kompetitor' || (i.Kategori && i.Kategori.toLowerCase() === 'kompetitor')).length;
+  const custCount = data.filter(i => i.Kategori === 'Customer' || (i.Kategori && i.Kategori.toLowerCase() === 'customer')).length;
   
   const donutLabels = [`JNE Ekosistem (${jneCount})`, `Kompetitor (${kompCount})`, `Customer (${custCount})`];
   const donutValues = [jneCount, kompCount, custCount];
@@ -1953,8 +1984,8 @@ function renderAgentTable(data) {
   let htmlContent = ""; 
   data.forEach(item => {
     let statCls = 's-queuing';
-  if(item.Kategori_Warehouse === 'KOMPETITOR') statCls = 's-unloading';
-  if(item.Kategori_Warehouse === 'CUSTOMER') statCls = 's-done';
+  if(item.Kategori === 'Kompetitor' || item.Kategori.toLowerCase() === 'kompetitor') statCls = 's-unloading';
+  if(item.Kategori === 'Customer' || item.Kategori.toLowerCase() === 'customer') statCls = 's-done';
     
     const escapedName = item.Nama_Agen.replace(/'/g, "\\'").replace(/"/g, "&quot;");
  
@@ -1976,7 +2007,7 @@ function renderAgentTable(data) {
 let agentSortDirection = false;
 function sortAgentTable(columnIndex) {
   agentSortDirection = !agentSortDirection;
-  const keys = ['Nama_Agen', 'Rating', 'Total_Ulasan', 'Kategori_Warehouse', 'KOTA', 'AREA'];
+  const keys = ['Nama_Agen', 'Rating', 'Total_Ulasan', 'Kategori', 'KOTA', 'AREA'];
   const key = keys[columnIndex];
  
  masterAgentData.sort((a, b) => {
