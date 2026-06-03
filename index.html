@@ -1668,9 +1668,9 @@ function triggerAgentAnalytics(skipMap = false) {
           if (activeCrossFilter.type === 'AGENT') return item.Nama_Agen === activeCrossFilter.value;
           if (activeCrossFilter.type === 'WH_CATEGORY') return item.Kategori_Warehouse === activeCrossFilter.value;
           if (activeCrossFilter.type === 'DONUT') {
-              if (activeCrossFilter.value.includes('JNE Ekosistem')) return ['WAREHOUSE','AGEN','CASH COUNTER'].includes(item.Kategori_Warehouse);
-              if (activeCrossFilter.value.includes('Kompetitor')) return item.Kategori_Warehouse === 'KOMPETITOR';
-              if (activeCrossFilter.value.includes('Customer')) return item.Kategori_Warehouse === 'CUSTOMER';
+              if (activeCrossFilter.value.includes('JNE Ekosistem')) return ['JNE'].includes(item.Kategori);
+              if (activeCrossFilter.value.includes('Kompetitor')) return item.Kategori === 'Kompetitor';
+              if (activeCrossFilter.value.includes('Customer')) return item.Kategori === 'Customer';
           }
           return true;
       });
@@ -1730,9 +1730,9 @@ function renderAgentMap(data) {
     if (!item.Latitude || !item.Longitude) return;
  
     let markerIcon;
-    if (item.Kategori_Warehouse === 'KOMPETITOR') {
+    if (item.Kategori === 'Kompetitor') {
         markerIcon = L.icon({ iconUrl: 'https://raw.githubusercontent.com/atteachmad/db-nadi-bdo/main/kompetitor.png', iconSize: [28,28], iconAnchor:[14,28], className: 'komp-custom-marker' });
-    } else if (item.Kategori_Warehouse === 'CUSTOMER') {
+    } else if (item.Kategori === 'Customer') {
         markerIcon = L.divIcon({ html: '<i class="fa-solid fa-house-user" style="color:#10b981; font-size:20px; text-shadow:1px 1px 2px rgba(0,0,0,0.5);"></i>', className: '', iconSize: [20,20], iconAnchor:[10,20] });
     } else {
         markerIcon = L.icon({ iconUrl: 'https://raw.githubusercontent.com/atteachmad/db-nadi-bdo/main/joni.png', iconSize: [32, 32], iconAnchor: [16, 32], className: 'jne-custom-marker' });
