@@ -7,28 +7,25 @@
   <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Nunito:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@4/dist/tesseract.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
- 
+
   <style>
     :root { 
       --bg: #050d1a; --surface: #0d1b2e; --surface2: #132038; --border: #1e3354; 
       --text: #e2eaf5; --text2: #7a9cbf; --amber: #f59e0b; --amber-dim: rgba(245,158,11,0.12); 
       --green: #10b981; --green-dim: rgba(16,185,129,0.12); --yellow: #eab308; --yellow-dim: rgba(234,179,8,0.12); 
-      --red: #ef4444; --red-dim: rgba(239,68,68,0.12); --blue: #38bdf8; --blue-dim: rgba(56,189,248,0.12);
+      --red: #ef4444; --red-dim: rgba(239,68,68,0.12); --blue: #38bdf8; --blue-dim: rgba(56,189,248,0.12); 
       --sidebar-bg: #0b1524;
     }
- 
-  [data-theme="light"] {
+
+    [data-theme="light"] {
       --bg: #f4f7f9; --surface: #ffffff; --surface2: #f1f5f9; --border: #cbd5e1; 
       --text: #0f172a; --text2: #64748b; --sidebar-bg: #ffffff;
     }
     
-   ::-webkit-scrollbar { display: none; }
+    ::-webkit-scrollbar { display: none; }
     * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
     
     html { background: var(--bg); min-height: 100%; transition: background-color 0.3s; }
@@ -36,8 +33,8 @@
     
     .view-header { display: flex; align-items: center; gap: 15px; margin-bottom: 18px; }
     .hamburger-inline { background: transparent; border: none; color: var(--text); font-size: 24px; cursor: pointer; transition: 0.2s; padding: 0; }
-  .hamburger-inline:hover { color: var(--amber); }
- 
+    .hamburger-inline:hover { color: var(--amber); }
+
     .sidebar-overlay { display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; height: 100dvh; background: rgba(0,0,0,0.6); z-index: 999; backdrop-filter: blur(2px); opacity: 0; transition: opacity 0.3s; }
     .sidebar-overlay.show { display: block; opacity: 1; }
     
@@ -69,7 +66,7 @@
     @keyframes glow { 0%,100% { box-shadow: 0 0 5px var(--blue); } 50% { box-shadow: 0 0 15px var(--blue); } }
     .text-glow { color: var(--blue) !important; text-shadow: 0 0 5px rgba(56,189,248,0.5); }
     
-  .theme-switch-wrapper { padding: 15px 20px; border-top: 1px solid var(--border); margin-top: 20px; display: flex; align-items: center; justify-content: space-between; }
+    .theme-switch-wrapper { padding: 15px 20px; border-top: 1px solid var(--border); margin-top: 20px; display: flex; align-items: center; justify-content: space-between; }
     .theme-label { display: flex; align-items: center; gap: 10px; font-size: 14px; font-weight: 600; color: var(--text); }
     .switch { position: relative; display: inline-block; width: 44px; height: 24px; }
     .switch input { opacity: 0; width: 0; height: 0; }
@@ -77,7 +74,7 @@
     .slider:before { position: absolute; content: ""; height: 16px; width: 16px; left: 3px; bottom: 3px; background-color: var(--text2); transition: .4s; border-radius: 50%; }
     input:checked + .slider { background-color: var(--amber); border-color: var(--amber); }
     input:checked + .slider:before { transform: translateX(20px); background-color: #fff; }
- 
+
     .view { display: none; min-height: 100%; } .view.active { display: block; animation: fadeIn 0.4s; }
     @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
     
@@ -121,13 +118,13 @@
     .kpi-card-val { font-family: 'IBM Plex Mono', monospace; font-size: 42px; font-weight: 600; }
     
     .table-container { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; box-shadow: 0 6px 12px rgba(0,0,0,0.15); }
-  .table-header-custom { display: flex; justify-content: space-between; align-items: center; background: rgba(13, 27, 46, 0.6); padding: 16px 20px; border-bottom: 1px solid var(--border); }
+    .table-header-custom { display: flex; justify-content: space-between; align-items: center; background: rgba(13, 27, 46, 0.6); padding: 16px 20px; border-bottom: 1px solid var(--border); }
     .table-title { font-family: 'Rajdhani', sans-serif; font-size: 18px; font-weight: 700; text-transform: uppercase; color: var(--amber); letter-spacing: 1px; }
-  .live-kpi-indicators { display: flex; align-items: center; gap: 15px; font-family: 'IBM Plex Mono', monospace; font-size: 13px; font-weight: bold; }
+    .live-kpi-indicators { display: flex; align-items: center; gap: 15px; font-family: 'IBM Plex Mono', monospace; font-size: 13px; font-weight: bold; }
     .kpi-alert-box { background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.3); padding: 4px 10px; border-radius: 6px; color: var(--red); }
     .live-dot { display: inline-flex; align-items: center; gap: 6px; color: var(--green); animation: blink 1.5s infinite; }
     .live-dot::before { content: ""; display: inline-block; width: 8px; height: 8px; background-color: var(--green); border-radius: 50%; }
- 
+
     .table-wrap { width: 100%; overflow-x: auto; }
     table { width: 100%; border-collapse: collapse; }
     th { padding: 14px 20px; text-align: left; font-family: 'Rajdhani', sans-serif; font-size: 12px; font-weight: 700; text-transform: uppercase; color: var(--text2); border-bottom: 1px solid var(--border); cursor: pointer; user-select: none; }
@@ -140,14 +137,14 @@
     .toast { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%) translateY(100px); padding: 12px 24px; border-radius: 30px; font-family: 'Rajdhani', sans-serif; font-size: 15px; font-weight: 700; z-index: 9999; transition: transform 0.3s; color: #fff; box-shadow: 0 4px 12px rgba(0,0,0,0.3); }
     .toast.show { transform: translateX(-50%) translateY(0); }
     .toast-ok { background: var(--green); } .toast-err { background: var(--red); }
- 
+
     .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; height: 100dvh; background: rgba(0,0,0,0.7); z-index: 10000; justify-content: center; align-items: center; }
     .modal-box { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 20px; width: 90%; max-width: 450px; position: relative; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
     .modal-close { position: absolute; top: 10px; right: 15px; color: var(--red); font-size: 20px; font-weight: bold; cursor: pointer; }
     .modal-title { font-family: 'Rajdhani', sans-serif; font-size: 20px; font-weight: bold; color: var(--amber); margin-bottom: 15px; text-transform: uppercase; border-bottom: 1px solid var(--border); padding-bottom: 10px; }
     .modal-body { font-size: 14px; line-height: 1.6; color: var(--text); }
     .modal-body a { color: var(--blue); text-decoration: none; }
- 
+
     .skeuo-card {
       background: var(--surface);
       border-radius: 16px;
@@ -188,21 +185,21 @@
     .skeuo-btn:active {
       box-shadow: inset 3px 3px 6px rgba(0,0,0,0.5), inset -3px -3px 6px rgba(255,255,255,0.04);
     }
- 
-   [data-theme="light"] .skeuo-card {
+
+    [data-theme="light"] .skeuo-card {
       box-shadow: 6px 6px 12px #d1d9e6, -6px -6px 12px #ffffff;
       border: none;
     }
-   [data-theme="light"] .skeuo-input {
+    [data-theme="light"] .skeuo-input {
       box-shadow: inset 4px 4px 8px #d1d9e6, inset -4px -4px 8px #ffffff;
     }
-   [data-theme="light"] .skeuo-btn {
+    [data-theme="light"] .skeuo-btn {
       box-shadow: 4px 4px 8px #d1d9e6, -4px -4px 8px #ffffff;
     }
-   [data-theme="light"] .skeuo-btn:active {
+    [data-theme="light"] .skeuo-btn:active {
       box-shadow: inset 4px 4px 8px #d1d9e6, inset -4px -4px 8px #ffffff;
     }
- 
+
     .ai-box {
       border-left: 4px solid var(--blue);
       background: linear-gradient(135deg, var(--surface), rgba(56,189,248,0.05));
@@ -210,86 +207,42 @@
     
     .chart-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; margin-bottom: 20px; }
     .chart-title { font-family: 'Rajdhani', sans-serif; font-size: 16px; font-weight: 700; color: var(--amber); margin-bottom: 15px; text-transform: uppercase; }
- 
+
     @media (max-width: 600px) {
       .modal-box {
-        position: absolute; top: 0; bottom: 0; left: 0; right: 0; width: 100% !important; height: 100% !important;
-        max-width: none !important; border-radius: 0 !important; border: none !important; overflow-y: auto;
-        padding: 24px; display: flex; flex-direction: column;
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        width: 100% !important;
+        height: 100% !important;
+        max-width: none !important;
+        border-radius: 0 !important;
+        border: none !important;
+        overflow-y: auto;
+        padding: 24px;
+        display: flex;
+        flex-direction: column;
       }
-      .modal-close { top: 20px; right: 20px; font-size: 28px; padding: 5px; z-index: 9999; }
-    }
- 
-    /* === STYLING CUSTOM UNTUK MANAJEMEN SENTIMEN === */
-  .premium-map-container {
-      height: 450px;
-      border-radius: 16px;
-      overflow: hidden;
-      border: 1px solid var(--border);
-      box-shadow: 0 8px 24px rgba(0,0,0,0.15);
-      z-index: 1;
-    }
-    .sentiment-pill {
-      display: inline-flex; padding: 6px 14px; border-radius: 30px; font-size: 12px; font-weight: 700; align-items: center; gap: 6px;
-    }
-    .sent-pos { background: rgba(16,185,129,0.15); color: var(--green); }
-    .sent-neu { background: rgba(234,179,8,0.15); color: var(--yellow); }
-    .sent-neg { background: rgba(239,68,68,0.15); color: var(--red); }
-    
-    .agent-grid-layout {
-      display: grid;
-    grid-template-columns: 2fr 1fr;
-      gap: 20px;
-      margin-bottom: 25px;
-    }
-    @media (max-width: 900px) {
-    .agent-grid-layout { grid-template-columns: 1fr; }
-    }
-    .review-scroll-box {
-      max-height: 385px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; padding-right: 4px;
-    }
-    .review-item-card {
-      background: var(--surface2); border-radius: 12px; padding: 12px; border: 1px solid var(--border); transition: transform 0.2s ease, box-shadow 0.2s ease;
-    }
-  .review-item-card:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
-  
-  /* CSS Modifikasi Tooltip Maps agar modern, transparan dan popup interaktif */
-  .leaflet-tooltip.modern-tooltip {
-      background: rgba(13, 27, 46, 0.85);
-      backdrop-filter: blur(6px);
-      border: 1px solid rgba(56,189,248,0.3);
-      border-radius: 8px;
-      color: #fff;
-      padding: 10px 14px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-  }
-  .leaflet-tooltip.modern-tooltip::before { display: none; }
-  .modern-popup .leaflet-popup-content-wrapper {
-      background: rgba(13, 27, 46, 0.95);
-      border: 1px solid var(--border);
-      color: #fff;
-      border-radius: 12px;
-  }
-  .modern-popup .leaflet-popup-tip { background: rgba(13, 27, 46, 0.95); border: 1px solid var(--border); }
-    
-    /* Cross Filter Styles */
-    .cross-hover:hover { background: rgba(255,255,255,0.05); }
-    .jne-custom-marker {
-      border-radius: 50%; border: 2px solid #38bdf8; box-shadow: 0 4px 6px rgba(0,0,0,0.3); object-fit: cover; background: #fff;
-    }
-    .komp-custom-marker {
-      border-radius: 50%; border: 2px solid #ef4444; box-shadow: 0 4px 6px rgba(0,0,0,0.3); object-fit: cover; background: #fff;
+      .modal-close {
+        top: 20px;
+        right: 20px;
+        font-size: 28px;
+        padding: 5px;
+        z-index: 9999;
+      }
     }
   </style>
 </head>
 <body>
- 
+
 <div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
- 
+
 <nav class="sidebar" id="sidebar">
   <div class="sidebar-header">
     <div class="sidebar-logo">
-      <img src="logo-nadi.png" alt="Logo NADI" style="width: 40px; height: auto;">
+    <img src="logo-nadi.png" alt="Logo NADI" style="width: 40px; height: auto;">
     </div>
       <div class="sidebar-title">
       DB-NADI
@@ -299,64 +252,65 @@
       </div>
     </div>
   </div>
- 
+
   <div class="sidebar-section">NAVIGASI UTAMA</div>
   <ul class="sidebar-menu">
     <li><a href="#"><i class="fa-solid fa-truck-fast"></i> Firstmile</a></li>
     <li class="has-submenu">
       <a href="#" class="toggle-submenu"><i class="fa-solid fa-route"></i> Midmile <i class="fa-solid fa-chevron-down caret"></i></a>
       <ul class="submenu">
-       <li><a href="#" onclick="setView('security'); closeSidebar();"><i class="fa-solid fa-shield-halved"></i> Security</a></li>
-       <li><a href="#" onclick="setView('checker'); closeSidebar();"><i class="fa-solid fa-clipboard-check"></i> Checker</a></li>
-       <li><a href="#" onclick="setView('tv'); closeSidebar();"><i class="fa-solid fa-tv"></i> Dashboard TV</a></li>
-       <li><a href="#" onclick="setView('armada'); closeSidebar();"><i class="fa-solid fa-chart-pie"></i> Analitik Armada</a></li>
+        <li><a href="#" onclick="setView('security'); closeSidebar();"><i class="fa-solid fa-shield-halved"></i> Security</a></li>
+        <li><a href="#" onclick="setView('checker'); closeSidebar();"><i class="fa-solid fa-clipboard-check"></i> Checker</a></li>
+        <li><a href="#" onclick="setView('tv'); closeSidebar();"><i class="fa-solid fa-tv"></i> Dashboard TV</a></li>
+        <li><a href="#" onclick="setView('armada'); closeSidebar();"><i class="fa-solid fa-chart-pie"></i> Analitik Armada</a></li>
       </ul>
     </li>
     <li><a href="#"><i class="fa-solid fa-box-check"></i> Lastmile</a></li>
   </ul>
- 
+
   <div class="sidebar-section">ANALITIK</div>
   <ul class="sidebar-menu">
     <li class="has-submenu">
       <a href="#" class="toggle-submenu"><i class="fa-solid fa-chart-line"></i> Laporan Kinerja <i class="fa-solid fa-chevron-down caret"></i></a>
       <ul class="submenu">
-       <li><a href="#">Laporan Mingguan</a></li>
-       <li><a href="#">Laporan Bulanan</a></li>
-       <li><a href="#">Perbandingan Periode</a></li>
+        <li><a href="#">Laporan Mingguan</a></li>
+        <li><a href="#">Laporan Bulanan</a></li>
+        <li><a href="#">Perbandingan Periode</a></li>
       </ul>
     </li>
-    <li class="has-submenu open">
-      <a href="#" class="toggle-submenu"><i class="fa-solid fa-users-gear"></i> Manajemen Sentimen <i class="fa-solid fa-chevron-down caret"></i></a>
-      <ul class="submenu" style="max-height: 150px;">
-       <li><a href="#" onclick="setView('manajemen-agen'); closeSidebar();" class="active">Daftar Warehouse</a></li>
-       <li><a href="#" onclick="setView('manajemen-agen'); closeSidebar();">Monitoring Area</a></li>
+    <li class="has-submenu">
+      <a href="#" class="toggle-submenu"><i class="fa-solid fa-users-gear"></i> Manajemen Agen <i class="fa-solid fa-chevron-down caret"></i></a>
+      <ul class="submenu">
+        <li><a href="#">Daftar Semua Agen</a></li>
+        <li><a href="#">Top Performa</a></li>
+        <li><a href="#">Monitoring Area</a></li>
       </ul>
     </li>
     <li class="has-submenu">
       <a href="#" class="toggle-submenu"><i class="fa-solid fa-boxes-stacked"></i> Pengiriman <i class="fa-solid fa-chevron-down caret"></i></a>
       <ul class="submenu">
-       <li><a href="#">Status Paket</a></li>
-       <li><a href="#">SLA Tracking</a></li>
-       <li><a href="#">Keluhan Pengiriman</a></li>
+        <li><a href="#">Status Paket</a></li>
+        <li><a href="#">SLA Tracking</a></li>
+        <li><a href="#">Keluhan Pengiriman</a></li>
       </ul>
     </li>
     <li>
       <a href="#" onclick="setView('ai'); closeSidebar();" class="text-glow"><i class="fa-solid fa-robot"></i> Fitur AI <span class="badge-new">NEW</span></a>
     </li>
   </ul>
- 
+
   <div class="sidebar-section">PENGEMBANGAN</div>
   <ul class="sidebar-menu">
     <li class="has-submenu">
       <a href="#" class="toggle-submenu"><i class="fa-solid fa-circle-question"></i> Bantuan & Info <i class="fa-solid fa-chevron-down caret"></i></a>
       <ul class="submenu">
-       <li><a href="#" onclick="openModal('modalAbout'); closeSidebar();">ℹ️ About DB-NADI</a></li>
-       <li><a href="#" onclick="openModal('modalHelpCenter'); closeSidebar();">💡 Help Center</a></li>
-       <li><a href="#" onclick="openModal('modalCreator'); closeSidebar();">👤 Profil Kreator</a></li>
+        <li><a href="#" onclick="openModal('modalAbout'); closeSidebar();">ℹ️ About DB-NADI</a></li>
+        <li><a href="#" onclick="openModal('modalHelpCenter'); closeSidebar();">💡 Help Center</a></li>
+        <li><a href="#" onclick="openModal('modalCreator'); closeSidebar();">👤 Profil Kreator</a></li>
       </ul>
     </li>
   </ul>
- 
+
   <div class="theme-switch-wrapper">
     <div class="theme-label"><i class="fa-solid fa-moon"></i> Mode Gelap</div>
     <label class="switch">
@@ -365,7 +319,7 @@
     </label>
   </div>
 </nav>
- 
+
 <div id="view-security" class="view">
   <div class="mobile-container">
     <div class="view-header">
@@ -443,7 +397,7 @@
     <button class="btn btn-primary" onclick="submitArrival()">✅ Catat Kedatangan</button>
   </div>
 </div>
- 
+
 <div id="view-checker" class="view">
   <div class="mobile-container">
     <div class="view-header">
@@ -468,8 +422,8 @@
     <div id="ck-list" style="flex: 1;"></div>
   </div>
 </div>
- 
-<div id="view-tv" class="view">
+
+<div id="view-tv" class="view active">
   <div class="tv-wrap">
     <div class="tv-header">
       <div class="tv-branding">
@@ -485,14 +439,14 @@
         <div class="tv-clock-date" id="tv-date">-- --- ----</div>
       </div>
     </div>
- 
+
     <div class="kpi-row">
       <div class="kpi-card kc-total"><div class="kpi-card-label">Total Armada Aktif</div><div class="kpi-card-val" id="kc-total" style="color:var(--text)">0</div></div>
       <div class="kpi-card kc-queuing"><div class="kpi-card-label">⏳ Menunggu Unload</div><div class="kpi-card-val" id="kc-queuing" style="color:var(--blue)">0</div></div>
       <div class="kpi-card kc-unloading"><div class="kpi-card-label">🔄 Sedang Unload</div><div class="kpi-card-val" id="kc-unloading" style="color:var(--amber)">0</div></div>
       <div class="kpi-card kc-violations"><div class="kpi-card-label">🔴 Alarm / Overdue</div><div class="kpi-card-val" id="kc-violations" style="color:var(--red)">0</div></div>
     </div>
- 
+
     <div class="table-container">
       <div class="table-header-custom">
         <div class="table-title">DAFTAR ARMADA</div>
@@ -503,7 +457,7 @@
       </div>
       <div class="table-wrap">
         <table id="mainTable">
-         <thead>
+          <thead>
             <tr>
               <th onclick="sortTable(0)">No </th>
               <th onclick="sortTable(1)">Petugas </th>
@@ -511,15 +465,15 @@
               <th onclick="sortTable(3)">Status </th>
               <th onclick="sortTable(4)">KPI Antrian (Max 180m) </th>
               <th onclick="sortTable(5)">KPI Unloading </th>
-           </tr>
-        </thead>
+            </tr>
+          </thead>
           <tbody id="tv-tbody"></tbody>
         </table>
       </div>
     </div>
   </div>
 </div>
- 
+
 <div id="view-armada" class="view">
   <div class="tv-wrap">
     <div class="tv-header" style="border-bottom: none;">
@@ -531,14 +485,14 @@
         </div>
       </div>
     </div>
- 
+
     <div class="skeuo-card ai-box" style="margin-bottom: 25px;">
       <div class="chart-title"><i class="fa-solid fa-robot text-glow"></i> AI Insight & Evaluasi Operasional</div>
       <div id="ai-insight-text" style="font-size: 14px; color: var(--text); line-height: 1.6;">
         Memuat analisa matematis dari spreadsheet...
       </div>
     </div>
- 
+
     <div class="skeuo-card" style="margin-bottom: 25px;">
       <div class="chart-title"><i class="fa-solid fa-filter" style="color: var(--text2);"></i> Filter Evaluasi Terintegrasi</div>
       <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 15px; margin-bottom: 20px;">
@@ -554,32 +508,32 @@
           <label class="form-label">Origin Armada</label>
           <select id="filter-origin-analitik" class="skeuo-input" onchange="processAnalitik()">
             <option value="all">Semua Origin</option>
-        </select>
+          </select>
         </div>
         <div>
           <label class="form-label">Jenis Kendaraan</label>
           <select id="filter-type-analitik" class="skeuo-input" onchange="processAnalitik()">
             <option value="all">Semua Jenis</option>
-        </select>
+          </select>
         </div>
         <div>
           <label class="form-label">Size Armada</label>
           <select id="filter-size-analitik" class="skeuo-input" onchange="processAnalitik()">
             <option value="all">Semua Size</option>
-        </select>
+          </select>
         </div>
         <div>
           <label class="form-label">Nama Checker</label>
           <select id="filter-checker-analitik" class="skeuo-input" onchange="processAnalitik()">
             <option value="all">Semua Checker</option>
-        </select>
+          </select>
         </div>
       </div>
       <div style="text-align: right; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 15px;">
         <button class="skeuo-btn btn-primary" onclick="downloadFilteredData()"><i class="fa fa-download"></i> Ekspor CSV Sesuai Filter</button>
       </div>
     </div>
- 
+
     <div class="chart-grid">
       <div class="skeuo-card chart-card">
         <div class="chart-title">Rasio Pelanggaran SLA / KPI</div>
@@ -596,159 +550,7 @@
     </div>
   </div>
 </div>
- 
-<div id="view-manajemen-agen" class="view">
-  <div class="tv-wrap">
-    <div class="tv-header">
-      <div class="tv-branding">
-        <button class="hamburger-inline" onclick="openSidebar()"><i class="fa-solid fa-bars"></i></button>
-        <div>
-          <div class="tv-main-title">Analitik Strategis</div>
-          <div class="tv-subtitle">Intelligence Control Center — Agen, Kompetitor, & Ekosistem Customer</div>
-        </div>
-      </div>
-    </div>
-    
-    <div id="cross-filter-indicator" style="display:none; padding: 12px 18px; background: rgba(56,189,248,0.15); color: var(--blue); border-left: 4px solid var(--blue); border-radius: 8px; margin-bottom: 20px; font-weight: bold; cursor: pointer; display: flex; justify-content: space-between; align-items: center;" onclick="setCrossFilter(null,null)">
-       <span><i class="fa-solid fa-filter"></i> Interactive Filter Aktif: <span id="cf-text" style="color:#fff; text-decoration: underline;"></span></span>
-        <span style="font-size:12px; color:var(--text2); background: rgba(0,0,0,0.2); padding: 4px 8px; border-radius: 4px;"><i class="fa-solid fa-xmark"></i> Hapus Filter (Klik)</span>
-    </div>
- 
-    <div class="kpi-row agent-kpi-row" style="display: flex; overflow-x: auto; flex-wrap: nowrap; gap: 14px; padding-bottom: 10px;">
-      <div class="skeuo-card" style="text-align: center; flex: 1; min-width: 150px;">
-        <div class="kpi-card-label" style="color: var(--text2)">⭐ Rata-Rata Rating JNE</div>
-        <div class="kpi-card-val" id="ag-kpi-rating" style="color: var(--amber)">0.0</div>
-      </div>
-      <div class="skeuo-card" style="text-align: center; flex: 1; min-width: 150px;">
-        <div class="kpi-card-label" style="color: var(--text2)">💬 Total Ulasan Terkumpul</div>
-        <div class="kpi-card-val" id="ag-kpi-reviews" style="color: var(--blue)">0</div>
-      </div>
-      <div class="skeuo-card" style="text-align: center; flex: 1; min-width: 150px;">
-        <div class="kpi-card-label" style="color: var(--text2)">📍 Total Entitas JNE</div>
-        <div class="kpi-card-val" id="ag-kpi-locations" style="color: var(--green)">0</div>
-      </div>
-      <div class="skeuo-card" style="text-align: center; flex: 1; min-width: 150px;">
-        <div class="kpi-card-label" style="color: var(--text2)">📊 Match Filter Terpilih</div>
-        <div class="kpi-card-val" id="ag-kpi-matched" style="color: var(--text)">0</div>
-      </div>
-      <div class="skeuo-card" style="text-align: center; flex: 1; min-width: 150px;">
-        <div class="kpi-card-label" style="color: var(--text2)">🏢 Jumlah Kompetitor</div>
-        <div class="kpi-card-val" id="ag-kpi-kompetitor" style="color: var(--red)">0</div>
-      </div>
-    </div>
- 
-    <div class="skeuo-card" style="margin-bottom: 25px;">
-      <div class="chart-title"><i class="fa-solid fa-sliders" style="color: var(--blue);"></i> Filter Ekosistem Multi-Dimensi</div>
-      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 20px;">
-        <div>
-          <label class="form-label">Kategori Warehouse</label>
-          <select id="ag-filter-wh" class="skeuo-input" onchange="triggerAgentAnalytics()">
-            <option value="all">Semua Kategori Warehouse</option>
-            <option value="WAREHOUSE">WAREHOUSE</option>
-            <option value="AGEN">AGEN</option>
-            <option value="CASH COUNTER">CASH COUNTER</option>
-            <option value="CUSTOMER">CUSTOMER</option>
-            <option value="J&T EXPRESS">J&T EXPRESS</option>
-            <option value="NINJA XPRESS">NINJA XPRESS</option>
-            <option value="ID EXPRESS">ID EXPRESS</option>
-            <option value="SICEPAT">SICEPAT</option>
-            <option value="ANTERAJA">ANTERAJA</option>
-            <option value="SPX EXPRESS">SPX EXPRESS</option>
-         </select>
-        </div>
-        <div>
-          <label class="form-label">Kategori Entitas</label>
-          <select id="ag-filter-cat" class="skeuo-input" onchange="triggerAgentAnalytics()">
-            <option value="all">Semua Kategori</option>
-            <option value="JNE">JNE</option>
-            <option value="Customer">Customer</option>
-            <option value="Kompetitor">Kompetitor</option>
-        </select>
-        </div>
-        <div>
-          <label class="form-label">Kota Wilayah (KOTA)</label>
-          <select id="ag-filter-kota" class="skeuo-input" onchange="triggerAgentAnalytics()">
-            <option value="all">Semua Kota</option>
-        </select>
-        </div>
-        <div>
-          <label class="form-label">Kecamatan</label>
-          <select id="ag-filter-kec" class="skeuo-input" onchange="triggerAgentAnalytics()">
-            <option value="all">Semua Kecamatan</option>
-         </select>
-        </div>
-        <div>
-          <label class="form-label">Kelurahan</label>
-          <select id="ag-filter-kel" class="skeuo-input" onchange="triggerAgentAnalytics()">
-            <option value="all">Semua Kelurahan</option>
-         </select>
-        </div>
-      </div>
-    </div>
- 
-    <div class="agent-grid-layout">
-      <div class="skeuo-card" style="display: flex; flex-direction: column; padding: 15px;">
-        <div class="chart-title" style="display: flex; justify-content: space-between; align-items: center;">
-        <span><i class="fa-solid fa-map-location-dot" style="color: var(--amber);"></i> Geospasial Hub & Pemetaan Jarak Terdekat</span>
-          <span id="map-status-dist" style="font-size: 11px; font-family: 'IBM Plex Mono', monospace; color: var(--blue);">Arahkan Kursor (Hover) pada marker JNE</span>
-        </div>
-        <div id="agent-map-canvas" class="premium-map-container"></div>
-      </div>
- 
-      <div class="skeuo-card" style="display: flex; flex-direction: column;">
-        <div class="chart-title"><i class="fa-solid fa-brain" style="color: var(--blue);"></i> Analisa Sentimen</div>
-        
-        <div style="background: rgba(0,0,0,0.15); border-radius: 12px; padding: 12px; margin-bottom: 15px; border-left: 3px solid var(--amber);">
-          <div style="font-size: 11px; font-weight: bold; text-transform: uppercase; color: var(--text2); margin-bottom: 4px;">Kesimpulan Ringkas Sentimen AI</div>
-          <div id="ag-text-summary" style="font-size: 13px; line-height: 1.5; color: var(--text);">Menganalisa teks manifest dan ulasan pelanggan...</div>
-        </div>
- 
-        <div class="review-scroll-box" id="ag-reviews-list">
-          </div>
-      </div>
-    </div>
- 
-    <div class="chart-grid">
-      <div class="skeuo-card">
-        <div class="chart-title">Rating Per Kategori Warehouse JNE</div>
-        <div style="position: relative; height: 230px;"><canvas id="ag-chart-wh"></canvas></div>
-      </div>
-      <div class="skeuo-card">
-        <div class="chart-title">Top Performa Rating Agen JNE</div>
-        <div style="position: relative; height: 230px;"><canvas id="ag-chart-agent"></canvas></div>
-      </div>
-      <div class="skeuo-card">
-        <div class="chart-title">Donut Distribusi Tipe Ekosistem</div>
-        <div style="position: relative; height: 230px;"><canvas id="ag-chart-donut"></canvas></div>
-      </div>
-    </div>
- 
-    <div class="table-container" style="margin-top: 25px;">
-      <div class="table-header-custom">
-        <div class="table-title">Daftar Manifest & Basis Data Agen Terintegrasi</div>
-        <div class="live-kpi-indicators">
-          <div class="live-dot" style="color: var(--blue);">DATA INTEGRATED</div>
-        </div>
-      </div>
-      <div class="table-wrap" style="max-height: 385px; overflow-y: auto;">
-        <table id="agentMainTable">
-         <thead style="position: sticky; top: 0; background: var(--surface); z-index: 10;">
-            <tr>
-              <th onclick="sortAgentTable(0)">Nama Agen <i class="fa-solid fa-sort"></i></th>
-              <th onclick="sortAgentTable(1)">Rating <i class="fa-solid fa-sort"></i></th>
-              <th onclick="sortAgentTable(2)">Total Ulasan <i class="fa-solid fa-sort"></i></th>
-              <th onclick="sortAgentTable(3)">Kategori WH <i class="fa-solid fa-sort"></i></th>
-              <th onclick="sortAgentTable(4)">Kota <i class="fa-solid fa-sort"></i></th>
-              <th onclick="sortAgentTable(5)">Area / Kecamatan <i class="fa-solid fa-sort"></i></th>
-           </tr>
-        </thead>
-          <tbody id="ag-table-body"></tbody>
-        </table>
-      </div>
-    </div>
- 
-  </div>
-</div>
+
 <div id="view-ai" class="view">
   <div class="mobile-container">
     <div class="view-header">
@@ -756,7 +558,7 @@
       <div class="section-title"><i class="fa-solid fa-robot text-glow"></i> Asisten AI NADI</div>
     </div>
     <div style="font-size: 13px; color: var(--text2); margin-bottom: 20px;">Ngobrol, cari solusi operasional, atau unggah data Excel/Word/Foto untuk dianalisa.</div>
- 
+
     <div class="skeuo-card" style="margin-bottom: 20px;">
       <div class="form-label">Upload Master Data AI (Excel/Word/Foto)</div>
       <div style="display: flex; gap: 10px; align-items: center; margin-top: 5px;">
@@ -765,7 +567,7 @@
       </div>
       <div id="ai-memory-status" style="font-size:11px; margin-top:8px; color:var(--text2); font-family: 'IBM Plex Mono', monospace;">Memori AI: Aktif (0 KB Knowledge)</div>
     </div>
- 
+
     <div class="skeuo-card" style="display: flex; flex-direction: column; flex: 1; min-height: 50vh; margin-bottom: 10px;">
       
       <div id="ai-chat-box" style="flex: 1; overflow-y: auto; padding: 10px; display:flex; flex-direction: column; gap:12px; margin-bottom: 10px; border: 1px solid rgba(255,255,255,0.05); border-radius: 8px; background: rgba(0,0,0,0.1);">
@@ -777,29 +579,29 @@
       <div style="display: flex; gap: 8px; align-items: center; position: relative;">
         <button class="skeuo-btn btn-outline" onclick="document.getElementById('ai-chat-upload').click()" style="padding: 0 16px; border-radius: 50%; height: 44px; display: flex; align-items: center; justify-content: center;" title="Lampirkan File">
           <i class="fa-solid fa-paperclip"></i>
-       </button>
+        </button>
         <input type="file" id="ai-chat-upload" style="display: none;" accept=".txt,.csv,.json,.xlsx,.xls,.docx,.doc,.jpg,.jpeg,.png" onchange="processSmartUpload('ai-chat-upload')" />
         
         <input type="text" id="ai-chat-input" class="skeuo-input" placeholder="Tanya AI atau ketik pesan..." onkeypress="if(event.key === 'Enter') sendAIChat()" style="flex: 1; height: 44px;" />
         
         <button class="skeuo-btn btn-primary" onclick="sendAIChat()" style="padding: 0 20px; height: 44px; display: flex; align-items: center; justify-content: center;">
           <i class="fa-solid fa-paper-plane"></i>
-       </button>
+        </button>
       </div>
- 
+
     </div>
   </div>
 </div>
- 
+
 <div class="toast" id="toast"></div>
- 
+
 <div class="modal-overlay" id="modalAbout">
   <div class="modal-box">
     <span class="modal-close" onclick="closeModal('modalAbout')">✖</span>
     <div class="modal-title">About DB-NADI</div>
     <div class="modal-box-body modal-body">
-    <p><b>DB-NADI (Dashboard NADI)</b> adalah sistem monitoring terpadu antrian dan operasional bongkar muat secara Real-Time.</p><br>
-    <p><b>Versi Sistem:</b><br>
+      <p><b>DB-NADI (Dashboard NADI)</b> adalah sistem monitoring terpadu antrian dan operasional bongkar muat secara Real-Time.</p><br>
+      <p><b>Versi Sistem:</b><br>
       - v1.0: Inisialisasi awal UI Mobile.<br>
       - v1.1: Integrasi Backend Google Sheets & Auto Timer.<br>
       - v1.2: Integrasi Validasi Foto.<br>
@@ -808,40 +610,40 @@
     </div>
   </div>
 </div>
- 
+
 <div class="modal-overlay" id="modalHelpCenter">
   <div class="modal-box">
     <span class="modal-close" onclick="closeModal('modalHelpCenter')">✖</span>
     <div class="modal-title">Help Center</div>
     <div class="modal-body">
-    <p><b>Cara Menggunakan DB-NADI:</b></p>
+      <p><b>Cara Menggunakan DB-NADI:</b></p>
       <ul style="padding-left: 20px; margin-top: 10px; margin-bottom: 10px;">
-      <li><b>Security:</b> Input kedatangan armada beserta kota asal (Origin).</li>
-      <li><b>Checker:</b> Monitoring tugas bongkar muat di handphone lapangan.</li>
-      <li><b>TV Dashboard:</b> Otomatis terkunci sebagai tampilan utama saat halaman di-refresh.</li>
+        <li><b>Security:</b> Input kedatangan armada beserta kota asal (Origin).</li>
+        <li><b>Checker:</b> Monitoring tugas bongkar muat di handphone lapangan.</li>
+        <li><b>TV Dashboard:</b> Otomatis terkunci sebagai tampilan utama saat halaman di-refresh.</li>
       </ul>
     </div>
   </div>
 </div>
- 
+
 <div class="modal-overlay" id="modalCreator">
   <div class="modal-box">
     <span class="modal-close" onclick="closeModal('modalCreator')">✖</span>
     <div class="modal-title">👤 Profil Kreator</div>
     <div class="modal-body" style="text-align: center;">
       <div style="background: var(--surface2); width: 80px; height: 80px; border-radius: 50%; margin: 0 auto 15px; display: flex; align-items: center; justify-content: center; font-size: 32px; border: 2px solid var(--amber);">
-          👨‍💻
+         👨‍💻
       </div>
       <h3 style="font-family: 'Rajdhani', sans-serif; font-size: 22px; color: var(--text); margin-bottom: 5px;">Achmad Taufik</h3>
       <p style="font-size: 14px; color: var(--amber); font-weight: 600; margin-bottom: 15px;">Performance Analyst Officer</p>
       <p style="font-size: 13px; color: var(--text2); margin-bottom: 20px;">Kreator db-NADI</p>
- 
+
       <div style="text-align: left; background: rgba(0,0,0,0.1); padding: 15px; border-radius: 10px; margin-bottom: 20px;">
         <p style="margin-bottom: 8px;">📧 <a href="mailto:atte.achmad@gmail.com" style="color: var(--blue);">atte.achmad@gmail.com</a></p>
         <p style="margin-bottom: 8px;">📞 0857-7930-0030</p>
         <p>💬 <a href="https://wa.me/6285779300030" target="_blank" style="color: #25D366; text-decoration: none; font-weight: bold;"><i class="fa-brands fa-whatsapp"></i> Chat via WhatsApp</a></p>
       </div>
- 
+
       <div style="text-align: left;">
         <h4 style="font-family: 'Rajdhani', sans-serif; color: var(--amber); border-bottom: 1px solid var(--border); padding-bottom: 5px; margin-bottom: 10px;">Tentang Proyek</h4>
         <p style="font-size: 13px; line-height: 1.6;"><b>db-NADI</b> dikembangkan sebagai solusi cerdas berbasis data untuk mengoptimalkan proses monitoring armada di lapangan secara komprehensif. Dengan mengintegrasikan sistem real-time, validasi geolokasi, dan analitik AI, aplikasi ini bertujuan untuk menekan waktu tunggu SLA, mendeteksi hambatan operasional, serta meningkatkan efisiensi dan produktivitas tim operasional dari pintu kedatangan (gate) hingga proses bongkar muat (dock).</p>
@@ -849,80 +651,79 @@
     </div>
   </div>
 </div>
- 
+
 <script>
 function openSidebar() {
- document.getElementById('sidebar').classList.add('open');
- document.getElementById('sidebarOverlay').classList.add('show');
+  document.getElementById('sidebar').classList.add('open');
+  document.getElementById('sidebarOverlay').classList.add('show');
 }
 function closeSidebar() {
- document.getElementById('sidebar').classList.remove('open');
- document.getElementById('sidebarOverlay').classList.remove('show');
+  document.getElementById('sidebar').classList.remove('open');
+  document.getElementById('sidebarOverlay').classList.remove('show');
 }
- 
+
 document.querySelectorAll('.toggle-submenu').forEach(btn => {
- btn.addEventListener('click', function(e) {
-   e.preventDefault();
+  btn.addEventListener('click', function(e) {
+    e.preventDefault();
     const li = this.parentElement;
     const submenu = li.querySelector('.submenu');
     
-  document.querySelectorAll('.has-submenu.open').forEach(el => {
+    document.querySelectorAll('.has-submenu.open').forEach(el => {
       if(el !== li) {
-      el.classList.remove('open');
-      el.querySelector('.submenu').style.maxHeight = null;
+        el.classList.remove('open');
+        el.querySelector('.submenu').style.maxHeight = null;
       }
     });
- 
-  li.classList.toggle('open');
+
+    li.classList.toggle('open');
     if (li.classList.contains('open')) {
-    submenu.style.maxHeight = submenu.scrollHeight + "px";
+      submenu.style.maxHeight = submenu.scrollHeight + "px";
     } else {
-    submenu.style.maxHeight = null;
+      submenu.style.maxHeight = null;
     }
   });
 });
- 
+
 function toggleTheme() {
   const isDark = document.getElementById('theme-switch').checked;
- document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
+  document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
   if(typeof renderCharts === 'function') renderCharts();
-  if(typeof triggerAgentAnalytics === 'function') triggerAgentAnalytics();
 }
- 
+
 // ==== VARIABEL GLOBAL & FUNGSI ANALITIK ARMADA ====
 let chartKPI, chartOrigin, chartChecker;
 let currentFilteredData = [];
- 
+
 function renderCharts() { 
   processAnalitik(); 
 }
- 
+
 function populateFilters() {
- if(!rawSpreadsheetData || rawSpreadsheetData.length === 0) return;
+  if(!rawSpreadsheetData || rawSpreadsheetData.length === 0) return;
   const origins = new Set(), types = new Set(), sizes = new Set(), checkers = new Set();
- 
- rawSpreadsheetData.forEach(r => {
+
+  rawSpreadsheetData.forEach(r => {
     if(r.origin) origins.add(r.origin);
     if(r.type) types.add(r.type);
     if(r.size) sizes.add(r.size);
     if(r.checkername) checkers.add(r.checkername);
   });
- 
+
   const fillSelect = (id, set) => {
     const el = document.getElementById(id);
     if(!el) return;
     const firstOpt = el.options[0].outerHTML; 
     el.innerHTML = firstOpt + Array.from(set).map(item => `<option value="${item}">${item}</option>`).join('');
   };
- 
- fillSelect('filter-origin-analitik', origins);
- fillSelect('filter-type-analitik', types);
- fillSelect('filter-size-analitik', sizes);
- fillSelect('filter-checker-analitik', checkers);
+
+  fillSelect('filter-origin-analitik', origins);
+  fillSelect('filter-type-analitik', types);
+  fillSelect('filter-size-analitik', sizes);
+  fillSelect('filter-checker-analitik', checkers);
 }
- 
+
 function processAnalitik() {
- if(!rawSpreadsheetData) return;
+  if(!rawSpreadsheetData) return;
   
   const start = document.getElementById('filter-start').value;
   const end = document.getElementById('filter-end').value;
@@ -930,7 +731,7 @@ function processAnalitik() {
   const type = document.getElementById('filter-type-analitik').value;
   const size = document.getElementById('filter-size-analitik').value;
   const checker = document.getElementById('filter-checker-analitik').value;
- 
+
   currentFilteredData = rawSpreadsheetData.filter(row => {
     if(start && row.arrivaltime) { if(new Date(row.arrivaltime) < new Date(start)) return false; }
     if(end && row.arrivaltime) {
@@ -943,47 +744,46 @@ function processAnalitik() {
     if(checker !== 'all' && row.checkername !== checker) return false;
     return true;
   });
- 
- generateAI(currentFilteredData);
- updateAnalitikCharts(currentFilteredData);
+
+  generateAI(currentFilteredData);
+  updateAnalitikCharts(currentFilteredData);
 }
- 
+
 function generateAI(data) {
   const box = document.getElementById('ai-insight-text');
-  if(!box) return;
   if(!data || data.length === 0) {
     box.innerHTML = "Tidak ada data pada rentang waktu atau filter yang Anda pilih.";
     return;
   }
- 
+
   let total = data.length;
   let kpiViolations = 0;
   let totalQueueTime = 0, totalUnloadTime = 0;
   let checkerStats = {};
   let worstAnomalies = [];
- 
+
   data.forEach(r => {
     let qDur = r.arrivaltime && r.unloadstart ? Math.max(0, Math.floor((new Date(r.unloadstart) - new Date(r.arrivaltime)) / 60000)) : 0;
     let uDur = r.unloadstart && r.unloadend ? Math.max(0, Math.floor((new Date(r.unloadend) - new Date(r.unloadstart)) / 60000)) : 0;
     
     totalQueueTime += qDur;
     totalUnloadTime += uDur;
- 
+
     let isViolated = false;
     if(qDur > KPI_QUEUE) { 
       isViolated = true; 
-    worstAnomalies.push(`Antrian Overdue (${qDur}m) dari origin ${r.origin || '-'}`); 
+      worstAnomalies.push(`Antrian Overdue (${qDur}m) dari origin ${r.origin || '-'}`); 
     }
     if(r.size && uDur > (KPI_UNLOAD[r.size] || 60)) { isViolated = true; }
     if(isViolated) kpiViolations++;
- 
+
     if(r.checkername) {
-    if(!checkerStats[r.checkername]) checkerStats[r.checkername] = { count: 0, time: 0 };
-    checkerStats[r.checkername].count++;
-     checkerStats[r.checkername].time += uDur;
+      if(!checkerStats[r.checkername]) checkerStats[r.checkername] = { count: 0, time: 0 };
+      checkerStats[r.checkername].count++;
+      checkerStats[r.checkername].time += uDur;
     }
   });
- 
+
   let violationRate = Math.round((kpiViolations / total) * 100);
   let avgQueue = Math.round(totalQueueTime / total);
   
@@ -992,14 +792,14 @@ function generateAI(data) {
     let avgT = checkerStats[c].time / checkerStats[c].count;
     if(avgT > maxAvgTime && checkerStats[c].count > 1) { maxAvgTime = avgT; worstChecker = c; }
   }
- 
+
   let reco = '<b style="color: var(--green);">🟢 Operasional Berjalan Optimal.</b> Tidak ada kendala mencolok.';
   if(violationRate > 20) {
     reco = `<b style="color: var(--red);">🔴 Tingkat Pelanggaran Tinggi (>20%).</b> Anomali Proses Ditemukan!<br>Rekomendasi: Tambah alokasi personil lapangan atau evaluasi alur kerja gate-to-dock.`;
   } else if(avgQueue > 60) {
     reco = `<b style="color: var(--yellow);">🟡 Rata-rata Waktu Antri Tinggi (${avgQueue}m).</b><br>Rekomendasi: Percepat administrasi dari tim Security ke Checker.`;
   }
- 
+
   let insightHtml = `
     <b>📊 Kesimpulan Matematis:</b><br>
     • Total Volume Diproses: <b>${total} Armada</b><br>
@@ -1012,19 +812,19 @@ function generateAI(data) {
   insightHtml += `<br>${reco}`;
   box.innerHTML = insightHtml;
 }
- 
+
 function updateAnalitikCharts(data) {
   const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
   const textColor = isDark ? '#e2eaf5' : '#4b5563';
   const gridColor = isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)';
- 
+
   Chart.defaults.color = textColor;
- Chart.defaults.font.family = "'Nunito', sans-serif";
- 
+  Chart.defaults.font.family = "'Nunito', sans-serif";
+
   let kpiOk = 0, kpiFail = 0;
   let originCounts = {};
   let checkerStats = {};
- 
+
   data.forEach(r => {
     let qDur = r.arrivaltime && r.unloadstart ? elapsed(r.arrivaltime, r.unloadstart) : 0;
     let uDur = r.unloadstart && r.unloadend ? elapsed(r.unloadstart, r.unloadend) : 0;
@@ -1036,12 +836,12 @@ function updateAnalitikCharts(data) {
     if(isFail) kpiFail++; else kpiOk++;
     if(r.origin) originCounts[r.origin] = (originCounts[r.origin] || 0) + 1;
     if(r.checkername) {
-    if(!checkerStats[r.checkername]) checkerStats[r.checkername] = { sum:0, count:0 };
-    checkerStats[r.checkername].sum += uDur;
-     checkerStats[r.checkername].count++;
+      if(!checkerStats[r.checkername]) checkerStats[r.checkername] = { sum:0, count:0 };
+      checkerStats[r.checkername].sum += uDur;
+      checkerStats[r.checkername].count++;
     }
   });
- 
+
   const ctxKPI = document.getElementById('chartKPI');
   if(ctxKPI) {
     if(chartKPI) chartKPI.destroy();
@@ -1054,12 +854,12 @@ function updateAnalitikCharts(data) {
       options: { responsive: true, cutout: '70%', plugins: { legend: { position: 'bottom' } } }
     });
   }
- 
+
   const ctxOrigin = document.getElementById('chartOrigin');
   if(ctxOrigin) {
     if(chartOrigin) chartOrigin.destroy();
     let oKeys = Object.keys(originCounts).sort((a,b)=>originCounts[b]-originCounts[a]).slice(0,5);
-   let oVals = oKeys.map(k=>originCounts[k]);
+    let oVals = oKeys.map(k=>originCounts[k]);
     chartOrigin = new Chart(ctxOrigin, {
       type: 'bar',
       data: {
@@ -1069,7 +869,7 @@ function updateAnalitikCharts(data) {
       options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { grid: { color: gridColor } }, x: { grid: { color: gridColor } } } }
     });
   }
- 
+
   const ctxChecker = document.getElementById('chartChecker');
   if(ctxChecker) {
     if(chartChecker) chartChecker.destroy();
@@ -1085,18 +885,18 @@ function updateAnalitikCharts(data) {
     });
   }
 }
- 
+
 function downloadFilteredData() {
- if(!currentFilteredData || currentFilteredData.length === 0) { 
+  if(!currentFilteredData || currentFilteredData.length === 0) { 
     toast("Tidak ada data untuk diekspor pada filter ini.", "err"); return; 
   }
   const allColumns = [];
- currentFilteredData.forEach(row => {
-   Object.keys(row).forEach(key => { if(!allColumns.includes(key)) allColumns.push(key); });
+  currentFilteredData.forEach(row => {
+    Object.keys(row).forEach(key => { if(!allColumns.includes(key)) allColumns.push(key); });
   });
- 
+
   let csvContent = allColumns.join(",") + "\n";
- currentFilteredData.forEach(row => {
+  currentFilteredData.forEach(row => {
     let rowValues = allColumns.map(colName => {
       let cellData = (row[colName] === undefined || row[colName] === null) ? "" : row[colName];
       if (typeof cellData === 'string') {
@@ -1107,52 +907,52 @@ function downloadFilteredData() {
     });
     csvContent += rowValues.join(",") + "\n";
   });
- 
+
   const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
- link.setAttribute("href", url);
- link.setAttribute("download", `DB_NADI_Report_${new Date().toISOString().slice(0,10)}.csv`);
- document.body.appendChild(link); link.click(); document.body.removeChild(link);
+  link.setAttribute("href", url);
+  link.setAttribute("download", `DB_NADI_Report_${new Date().toISOString().slice(0,10)}.csv`);
+  document.body.appendChild(link); link.click(); document.body.removeChild(link);
   toast("✅ Data Berhasil Diunduh (Berdasarkan Filter).");
 }
 // ==================================================
- 
+
 // ==== FUNGSI FITUR AI ASSISTANT CERDAS (UNIVERSAL) ====
 let aiKnowledgeBase = "";
- 
+
 function saveToKnowledgeBase(filename, textData) {
   let cleanText = textData.replace(/(\r\n|\n|\r)/gm, " ").replace(/\s+/g, " ").trim();
   aiKnowledgeBase += `\n[File: ${filename}] Isi Data: ${cleanText}`;
   const sizeKB = Math.round(aiKnowledgeBase.length / 1024);
- document.getElementById('ai-memory-status').textContent = `Memori AI: Aktif (${sizeKB} KB Knowledge)`;
+  document.getElementById('ai-memory-status').textContent = `Memori AI: Aktif (${sizeKB} KB Knowledge)`;
 }
- 
+
 async function processSmartUpload(inputId) {
   const fileInput = document.getElementById(inputId);
   const file = fileInput.files[0];
   if(!file) return;
- 
+
   const ext = file.name.split('.').pop().toLowerCase();
- appendAIChat("User", `<i>📎 Melampirkan File: <b>${file.name}</b></i>`);
+  appendAIChat("User", `<i>📎 Melampirkan File: <b>${file.name}</b></i>`);
   toast("⏳ AI NADI sedang memproses dokumen...");
- 
+
   if (['jpg', 'jpeg', 'png'].includes(ext) || file.type.startsWith('image/')) {
-  appendAIChat("AI", "Saya sedang memindai tulisan di gambar tersebut. Mohon tunggu sebentar ya... 🔍");
-      const reader = new FileReader();
-      reader.onload = function() {
+    appendAIChat("AI", "Saya sedang memindai tulisan di gambar tersebut. Mohon tunggu sebentar ya... 🔍");
+    const reader = new FileReader();
+    reader.onload = function() {
       Tesseract.recognize(reader.result, 'ind', { logger: m => console.log(m) })
-          .then(({ data: { text } }) => {
+        .then(({ data: { text } }) => {
           if(text.trim().length < 2) {
             appendAIChat("AI", "Hmm, teks di gambarnya kurang jelas atau tidak terbaca. Boleh coba foto yang lebih terang? 😅");
-              return;
-            }
+            return;
+          }
           saveToKnowledgeBase(file.name, text);
           appendAIChat("AI", `✅ Gambar <b>${file.name}</b> berhasil saya baca dan rekam. Mau saya simpulkan isinya atau mencari info spesifik dari foto itu?`);
-          })
-          .catch(err => { toast("❌ Gagal memproses OCR Gambar", "err"); });
-      };
-  reader.readAsDataURL(file);
+        })
+        .catch(err => { toast("❌ Gagal memproses OCR Gambar", "err"); });
+    };
+    reader.readAsDataURL(file);
   } 
   else if (['xlsx', 'xls', 'csv'].includes(ext)) {
     const reader = new FileReader();
@@ -1162,23 +962,23 @@ async function processSmartUpload(inputId) {
       const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
       const rawTextData = XLSX.utils.sheet_to_csv(firstSheet);
       
-    saveToKnowledgeBase(file.name, rawTextData);
-    appendAIChat("AI", `✅ Mantap! Data spreadsheet <b>${file.name}</b> berhasil saya ekstrak ke memori. Sekarang tanyakan saja apa yang ingin dianalisa dari file Excel tersebut. 📊`);
+      saveToKnowledgeBase(file.name, rawTextData);
+      appendAIChat("AI", `✅ Mantap! Data spreadsheet <b>${file.name}</b> berhasil saya ekstrak ke memori. Sekarang tanyakan saja apa yang ingin dianalisa dari file Excel tersebut. 📊`);
     };
-  reader.readAsArrayBuffer(file);
+    reader.readAsArrayBuffer(file);
   } 
   else {
     const reader = new FileReader();
     reader.onload = function(e) {
-    saveToKnowledgeBase(file.name, e.target.result);
-    appendAIChat("AI", `✅ Dokumen teks/Word <b>${file.name}</b> berhasil saya pahami. Mari kita bahas instruksi di dalamnya!`);
+      saveToKnowledgeBase(file.name, e.target.result);
+      appendAIChat("AI", `✅ Dokumen teks/Word <b>${file.name}</b> berhasil saya pahami. Mari kita bahas instruksi di dalamnya!`);
     };
-  reader.readAsText(file);
+    reader.readAsText(file);
   }
- 
+
   fileInput.value = "";
 }
- 
+
 function appendAIChat(sender, msg) {
   const box = document.getElementById('ai-chat-box');
   const isUser = sender === 'User';
@@ -1189,23 +989,23 @@ function appendAIChat(sender, msg) {
   box.innerHTML += html;
   box.scrollTop = box.scrollHeight;
 }
- 
+
 function sendAIChat() {
   const input = document.getElementById('ai-chat-input');
   const val = input.value.trim();
   if(!val) return;
   
- appendAIChat("User", val);
+  appendAIChat("User", val);
   input.value = "";
- 
+
   setTimeout(() => {
     let response = "";
     const lowerVal = val.toLowerCase();
- 
+
     const greetings = ['halo', 'hai', 'pagi', 'siang', 'sore', 'malam', 'assalamualaikum'];
     const praises = ['mantap', 'keren', 'bagus', 'ok', 'oke', 'baik', 'sip', 'terima kasih', 'makasih', 'thanks'];
     const questionsAboutAI = ['siapa kamu', 'tentang ai', 'bisa apa saja', 'namamu siapa'];
- 
+
     if (greetings.some(g => lowerVal.includes(g)) && lowerVal.length < 25) {
         response = "Halo! Senang bisa ngobrol dengan Anda. Saya AI NADI, siap membantu urusan analisa SLA armada atau merekap dokumen Anda. Ada yang bisa saya bantu sekarang?";
     } 
@@ -1227,21 +1027,21 @@ function sendAIChat() {
             const sentences = aiKnowledgeBase.split(/[.?!]/).map(s => s.trim()).filter(s => s.length > 10);
             
             let matchedSentences = [];
-          sentences.forEach(sentence => {
+            sentences.forEach(sentence => {
                 const sLow = sentence.toLowerCase();
                 let score = 0;
-              keywords.forEach(k => { if(sLow.includes(k)) score++; });
-              if(score > 0) matchedSentences.push({text: sentence, score: score});
+                keywords.forEach(k => { if(sLow.includes(k)) score++; });
+                if(score > 0) matchedSentences.push({text: sentence, score: score});
             });
             
-          if(matchedSentences.length > 0) {
-              matchedSentences.sort((a,b) => b.score - a.score);
+            if(matchedSentences.length > 0) {
+                matchedSentences.sort((a,b) => b.score - a.score);
                 let bestMatches = matchedSentences.slice(0, 2).map(m => `"${m.text}"`).join("<br><br>• ");
-              response = `<b>💡 Berdasarkan analisa file yang Anda unggah sebelumnya:</b><br><br>• ${bestMatches}<br><br><i>Semoga temuan data di atas menjawab kebingungan Anda. Butuh analisa dari file lainnya?</i>`;
+                response = `<b>💡 Berdasarkan analisa file yang Anda unggah sebelumnya:</b><br><br>• ${bestMatches}<br><br><i>Semoga temuan data di atas menjawab kebingungan Anda. Butuh analisa dari file lainnya?</i>`;
             }
         }
     }
- 
+
     if (!response) {
        if (aiKnowledgeBase === "") {
            response = "Hmm, pertanyaan Anda menarik tapi saya belum punya konteks datanya. Coba <b>lampirkan file Excel / Word / Foto</b> menggunakan ikon klip kertas (📎) di samping kolom ketik ini agar saya bisa analisa dan kasih rekomendasinya! 😉";
@@ -1249,103 +1049,101 @@ function sendAIChat() {
            response = "Saya sudah menelusuri memori dokumen yang Anda upload, tapi sepertinya kata kunci yang Anda tanyakan tidak ditemukan secara pasti di sana. Bisa diperjelas lagi pertanyaannya?";
        }
     }
- 
-  appendAIChat("AI", response);
+
+    appendAIChat("AI", response);
   }, 1000);
 }
 // ==================================================
- 
+
 const API_URL = 'https://script.google.com/macros/s/AKfycbxDdtdla2-hoRDz66czD4TfbYGdaqpw2vi7jecJPaUisfRwUUgf1qGhIol6_VVUlXxT/exec';
-const API_URL_AGEN = 'https://script.google.com/macros/s/AKfycbw-QA3Qo9Ga5m3KcrxkDt27o8b_kM0Ti4QNeGtwXTG3-JuzJ1Ko8HsydMDi-Vo7Wm83MA/exec';
- 
+
+const ALLOWED_LOCATIONS = [
+  { lat: -6.9356255322387295, lon: 107.6989397768731, name: "Hub JNE Utama" },
+  { lat: -6.950416631576503, lon: 107.81136000887774, name: "Lokasi Rumah (Test)" },
+  { lat: -6.936258, lon: 107.698784, name: "Lokasi Tambahan 1" },
+  { lat: -6.9504251172266125, lon: 107.81136520908176, name: "Lokasi Tambahan 2" }
+];
 const MAX_RADIUS_METER = 1000;
- 
+
 const FLEET_SIZES = { small: ['Blandvan','L300'], medium: ['CDD','CDE','CDEL','Truck'], large: ['Fuso','Wingbox','Tronton'] };
 const KPI_UNLOAD = { small:20, medium:60, large:120 }; 
 const KPI_QUEUE  = 180; 
- 
+
 let fleets = [];
 let rawSpreadsheetData = [];
 let checkerSearchTerm = '';
 let checkerStatusFilter = 'all';
- 
+
 function openModal(id) { document.getElementById(id).style.display = 'flex'; }
 function closeModal(id) { document.getElementById(id).style.display = 'none'; }
- 
+
 function startDictation(inputId, iconEl) {
   if (window.hasOwnProperty('webkitSpeechRecognition') || window.hasOwnProperty('SpeechRecognition')) {
     const SpeechRecognition = window.Windows || window.webkitSpeechRecognition;
     const recognition = new SpeechRecognition();
     recognition.lang = "id-ID"; recognition.continuous = false; recognition.interimResults = false;
-  iconEl.classList.add("active"); toast("Mendengarkan... Silakan bicara", "ok");
-  recognition.start();
-  recognition.onresult = function(e) {
-    document.getElementById(inputId).value = e.results[0][0].transcript; recognition.stop();
+    iconEl.classList.add("active"); toast("Mendengarkan... Silakan bicara", "ok");
+    recognition.start();
+    recognition.onresult = function(e) {
+      document.getElementById(inputId).value = e.results[0][0].transcript; recognition.stop();
       iconEl.classList.remove("active"); if(inputId === 'search-fleet') updateCheckerFilter();
     };
-   recognition.onerror = function(e) {
-    recognition.stop(); iconEl.classList.remove("active"); toast("Suara tidak terdengar jelas.", "err");
+    recognition.onerror = function(e) {
+      recognition.stop(); iconEl.classList.remove("active"); toast("Suara tidak terdengar jelas.", "err");
     }
   } else { toast("❌ Browser tidak mendukung Voice-to-Text", "err"); }
 }
- 
+
 function playAlarm(level) {
   try {
     const ctx = new (window.AudioContext || window.webkitAudioContext)();
     const osc = ctx.createOscillator(); const gain = ctx.createGain();
     osc.connect(gain); gain.connect(ctx.destination);
     if(level === 'warning') { 
-    osc.frequency.value = 400; gain.gain.setValueAtTime(0.1, ctx.currentTime);
+      osc.frequency.value = 400; gain.gain.setValueAtTime(0.1, ctx.currentTime);
       osc.start(); osc.stop(ctx.currentTime + 0.5);
     } else { 
-    osc.frequency.value = 800; osc.type = 'square'; gain.gain.setValueAtTime(0.3, ctx.currentTime);
+      osc.frequency.value = 800; osc.type = 'square'; gain.gain.setValueAtTime(0.3, ctx.currentTime);
       osc.start(); osc.stop(ctx.currentTime + 1.0);
     }
   } catch(e) {} 
 }
- 
+
 function getSize(type) { for (const [sz, arr] of Object.entries(FLEET_SIZES)) { if (arr.includes(type)) return sz; } return 'small'; }
 function elapsed(startIso, endIso) {
   const end = endIso ? new Date(endIso) : new Date();
   return Math.max(0, Math.floor((end - new Date(startIso)) / 60000));
 }
 function fmtHM(iso) { const d = new Date(iso); return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`; }
- 
+
 function tickClock() { 
   const n = new Date(); 
-  const hh = String(n.getHours()).padStart(2,'0'), mm = String(n.getMinutes()).padStart(2,'0'), ss = String(n.getSeconds()).padStart(2,'0');
+  const hh = String(n.getHours()).padStart(2,'0'), mm = String(n.getMinutes()).padStart(2,'0'), ss = String(n.getSeconds()).padStart(2,'0'); 
   const days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
   const months = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
   if (document.getElementById('tv-time')) document.getElementById('tv-time').textContent = `${hh}:${mm}:${ss}`; 
   if (document.getElementById('tv-date')) document.getElementById('tv-date').textContent = `${days[n.getDay()]}, ${String(n.getDate()).padStart(2,'0')} ${months[n.getMonth()]} ${n.getFullYear()}`;
-  if (document.getElementById('sec-datetime')) document.getElementById('sec-datetime').textContent = `Waktu Sistem: ${hh}:${mm}`;
+  if (document.getElementById('sec-datetime')) document.getElementById('sec-datetime').textContent = `Waktu Sistem: ${hh}:${mm}`; 
 }
 setInterval(tickClock, 1000); tickClock();
- 
+
 function renderAll() { renderChecker(); renderTV(); }
- 
+
 function setView(v) { 
- document.querySelectorAll('.view').forEach(el => el.classList.remove('active')); 
- if(document.getElementById(`view-${v}`)) {
-  document.getElementById(`view-${v}`).classList.add('active'); 
+  document.querySelectorAll('.view').forEach(el => el.classList.remove('active')); 
+  if(document.getElementById(`view-${v}`)) {
+    document.getElementById(`view-${v}`).classList.add('active'); 
   }
   if(v === 'armada') renderCharts(); 
-  if(v === 'manajemen-agen') {
-    if(typeof initAgentModule === 'function') {
-      if(!agentMap) initAgentModule();
-      else setTimeout(() => agentMap.invalidateSize(), 150);
-    triggerAgentAnalytics();
-    }
-  }
   renderAll(); 
 }
- 
+
 function toast(msg, type) { 
   const el = document.getElementById('toast'); el.textContent = msg; 
   el.className = `toast toast-${type==='err'?'err':'ok'} show`; 
   setTimeout(() => el.classList.remove('show'), 3000); 
 }
- 
+
 function getDistance(lat1, lon1, lat2, lon2) {
   const R = 6371000; 
   const dLat = (lat2 - lat1) * Math.PI / 180;
@@ -1354,157 +1152,43 @@ function getDistance(lat1, lon1, lat2, lon2) {
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
   return R * c; 
 }
- 
+
+// MODIFIED: Diubah agar mengabaikan batasan geofencing asli sehingga bisa di-input dari mana saja
 function getGPSLocation() {
   return new Promise((resolve) => {
+    // bypass otomatis untuk keperluan testing di lokasi manapun
     resolve({ 
-      lat: -6.9504166,
+      lat: -6.9504166, 
       lon: 107.81136, 
       distance: 0, 
       locationName: "Bypass (Kondisi Tes)" 
     });
   });
 }
- 
-let isFetching = false;
-let masterAgentData = [];
-let masterReviewData = []; 
-let chartAgentFullNames = []; 
- 
-// ================= LOGIKA GLOBAL CROSS FILTER MANAJEMEN SENTIMEN =================
-let activeCrossFilter = { type: null, value: null };
- 
-function setCrossFilter(type, value) {
-  if (activeCrossFilter.type === type && activeCrossFilter.value === value) {
-    activeCrossFilter = { type: null, value: null };
-  } else {
-    activeCrossFilter = { type, value };
-  }
- triggerAgentAnalytics();
-}
- 
+
 async function fetchDatabase() {
-  if (isFetching) return;
-  isFetching = true;
- 
   try {
-    const [resFleet, resAgent] = await Promise.all([
-     fetch(API_URL).then(r => r.json()).catch(() => []),
-      fetch(API_URL_AGEN).then(r => r.json()).catch(() => [])
-    ]);
- 
-    if (resFleet && resFleet.length > 0) {
-       rawSpreadsheetData = resFleet;
-        fleets = resFleet.map(row => ({
-          id: row.id, secName: row.securityname, driverName: row.driver, plateNumber: row.plate, 
-          fleetType: row.type, fleetSize: row.size, arrivalTime: row.arrivaltime, 
-          checkerName: row.checkername, status: row.status, unloadStartTime: row.unloadstart || null, 
-          unloadEndTime: row.unloadend || null, origin: row.origin
-        }));
-    }
- 
-    if (resAgent && resAgent.length > 0) {
-      const uniqueAgents = new Map();
-      const reviewsList = [];
- 
-     resAgent.forEach(item => {
-        let lat = parseFloat(item.Latitude) || null;
-        let lon = parseFloat(item.Longitude) || null;
-        
-        if (lat && Math.abs(lat) > 90) lat = lat / 100000; 
-        if (lon && Math.abs(lon) > 180) lon = lon / 10000; 
- 
-        const namaAgen = item.Nama_Agen || "Tanpa Nama";
-        const katWH = item["Kategori Warehouse"] ? item["Kategori Warehouse"].toUpperCase().trim() : "WAREHOUSE";
-        const kota = item.KOTA ? item.KOTA.toUpperCase().trim() : "#N/A";
-        const kat = item.Kategori || "JNE";
-        const kecamatan = item.Kecamatan ? item.Kecamatan.toUpperCase().trim() : (item.KECAMATAN ? item.KECAMATAN.toUpperCase().trim() : "TIDAK DIKETAHUI");
-        const kelurahan = item.Kelurahan ? item.Kelurahan.toUpperCase().trim() : (item.KELURAHAN ? item.KELURAHAN.toUpperCase().trim() : "TIDAK DIKETAHUI");
- 
-        if (!uniqueAgents.has(namaAgen)) {
-         uniqueAgents.set(namaAgen, {
-            Nama_Agen: namaAgen,
-            Link_Maps: item.Link_Maps || "#",
-            Alamat: item.Alamat || "-",
-            Latitude: lat,
-            Longitude: lon,
-            Rating: parseFloat(item.Rating_Rata_Rata) || parseFloat(item.Rating) || 0,
-           Total_Ulasan: parseInt(item.Total_Ulasan_Agen) || parseInt(item.Total_Ulasan) || 0,
-            AREA: item.AREA || "-",
-           Kategori_Warehouse: katWH,
-            Kategori: kat,
-            KOTA: kota,
-            KECAMATAN: kecamatan,
-            KELURAHAN: kelurahan
-          });
-        }
- 
-        if (item.Teks_Ulasan && item.Teks_Ulasan.trim() !== "") {
-          reviewsList.push({
-            Nama_Agen: namaAgen,
-           Kategori_Warehouse: katWH,
-            Kategori: kat,
-            KOTA: kota,
-            KECAMATAN: kecamatan,
-            KELURAHAN: kelurahan,
-            Rating_Ulasan: parseFloat(item.Rating_Ulasan_Orang) || parseFloat(item.Rating_Rata_Rata) || 0,
-           Teks_Ulasan: item.Teks_Ulasan.trim()
-          });
-        }
-      });
- 
-      masterAgentData = Array.from(uniqueAgents.values());
-      masterReviewData = reviewsList;
-      populateAgentFilters(); 
-    }
- 
+    const response = await fetch(API_URL);
+    const data = await response.json();
+    rawSpreadsheetData = data;
+    fleets = data.map(row => ({
+      id: row.id, secName: row.securityname, driverName: row.driver, plateNumber: row.plate, fleetType: row.type, fleetSize: row.size,
+      arrivalTime: row.arrivaltime, checkerName: row.checkername, status: row.status, unloadStartTime: row.unloadstart || null, unloadEndTime: row.unloadend || null, origin: row.origin
+    }));
+    
     populateFilters();
     processAnalitik();
-    
-    const activeView = document.querySelector('.view.active');
-    if (activeView && activeView.id === 'view-manajemen-agen') {
-      // Lewati re-render map otomatis (parameter true) saat refresh interval agar ringan & smooth
-      triggerAgentAnalytics(true);
-    }
-    
     renderAll();
-  } catch (e) {
-   console.error("Gagal sinkronisasi data:", e);
-  } finally {
-    isFetching = false;
-  }
+  } catch (e) { console.error("Koneksi terputus.", e); }
 }
- 
-// ==== MEMPOPULASI FILTER KOTA, KECAMATAN, KELURAHAN DARI SPREADSHEET ====
-function populateAgentFilters() {
-  const setKota = new Set(["BANDUNG", "RANCAEKEK", "SUMEDANG", "CIMAREME", "SOREANG", "GARUT", "CIANJUR", "#N/A"]);
-  const setKec = new Set();
-  const setKel = new Set();
- 
- masterAgentData.forEach(item => {
-    if(item.KOTA) setKota.add(item.KOTA);
-    if(item.KECAMATAN) setKec.add(item.KECAMATAN);
-    if(item.KELURAHAN) setKel.add(item.KELURAHAN);
-  });
- 
-  const fill = (id, set, label) => {
-    const el = document.getElementById(id);
-    if(!el) return;
-    el.innerHTML = `<option value="all">Semua ${label}</option>` + Array.from(set).sort().map(i => `<option value="${i}">${i}</option>`).join('');
-  };
- 
- fill('ag-filter-kota', setKota, "Kota");
- fill('ag-filter-kec', setKec, "Kecamatan");
-  fill('ag-filter-kel', setKel, "Kelurahan");
-}
- 
+
 async function submitArrival() {
   const secName = document.getElementById('f-secname').value.trim();
-  const driver = document.getElementById('f-driver').value.trim();
+  const driver = document.getElementById('f-driver').value.trim(); 
   const plate = document.getElementById('f-plate').value.trim().toUpperCase(); 
   const type = document.getElementById('f-type').value;
   const origin = document.getElementById('f-origin').value;
- 
+
   if (!secName || !driver || !plate || !origin) { toast('❌ Semua kolom wajib diisi (termasuk Origin)!','err'); return; }
   
   toast('⏳ Memverifikasi GPS...');
@@ -1512,17 +1196,17 @@ async function submitArrival() {
     const loc = await getGPSLocation();
     toast('⏳ Menyimpan...');
     await fetch(API_URL, { method: 'POST', body: JSON.stringify({ action: 'addArrival', id: 'ARR-' + Date.now().toString().slice(-6), securityName: secName, driver: driver, plate: plate, origin: origin, type: type, size: getSize(type), arrivalTime: new Date().toISOString(), gpsLog: `GPS OK (Bypass Mode)` })});
-  document.getElementById('f-plate').value = ''; document.getElementById('f-driver').value = ''; document.getElementById('f-origin').value = '';
+    document.getElementById('f-plate').value = ''; document.getElementById('f-driver').value = ''; document.getElementById('f-origin').value = '';
     await fetchDatabase(); toast('✅ Kedatangan Berhasil Valid!');
   } catch(err) { toast('❌ ' + err, 'err'); }
 }
- 
+
 function updateCheckerFilter() {
   checkerSearchTerm = document.getElementById('search-fleet').value.toLowerCase().trim();
   checkerStatusFilter = document.getElementById('filter-status').value;
   renderChecker();
 }
- 
+
 function renderChecker() {
   const el = document.getElementById('ck-list'); if(!el) return;
   let list = fleets.filter(f => f.status && f.status.toLowerCase() !== 'done');
@@ -1537,15 +1221,15 @@ function renderChecker() {
     let content = ''; const status = f.status.toLowerCase();
     if(status === 'queuing') {
       content = `<div class="form-group" style="margin-top:10px;"><input type="text" id="cn-${f.id}" class="form-input" placeholder="Nama Anda (Checker)..."></div>
-               <button class="btn btn-primary" style="margin-top:5px;" onclick="startUnloading('${f.id}')">🔄 MULAI UNLOAD</button>`;
+                 <button class="btn btn-primary" style="margin-top:5px;" onclick="startUnloading('${f.id}')">🔄 MULAI UNLOAD</button>`;
     } else if(status === 'unloading') {
       content = `<div style="font-size:13px; color:var(--amber); margin: 8px 0;">Checker Aktif: ${f.checkerName || '-'}</div>
-               <button class="btn btn-success" onclick="finishUnloading('${f.id}')">✅ SELESAI UNLOAD</button>`;
+                 <button class="btn btn-success" onclick="finishUnloading('${f.id}')">✅ SELESAI UNLOAD</button>`;
     }
     return `<div class="fleet-card"><div class="fleet-card-header"><div><div class="fleet-name">${f.plateNumber}</div><div class="fleet-meta">${f.fleetType} · Supir: ${f.driverName} · Tiba: ${fmtHM(f.arrivalTime)}</div></div><span class="status-badge s-${status}">${status}</span></div>${content}</div>`;
   }).join('');
 }
- 
+
 async function startUnloading(id) {
   const cName = document.getElementById(`cn-${id}`).value.trim();
   if(!cName) { toast('❌ Nama Checker wajib diisi!','err'); return; }
@@ -1555,27 +1239,27 @@ async function startUnloading(id) {
     await fetchDatabase(); toast('🔄 Unloading Berhasil Dimulai!');
   } catch(err) { toast('❌ ' + err, 'err'); }
 }
- 
+
 async function finishUnloading(id) {
   toast('⏳ Memverifikasi GPS...');
   try {
-   await fetch(API_URL, { method: 'POST', body: JSON.stringify({ action: 'updateStatus', id: id, status: 'done', endTime: new Date().toISOString(), gpsLog: `GPS OK (Bypass Mode)` }) });
+    await fetch(API_URL, { method: 'POST', body: JSON.stringify({ action: 'updateStatus', id: id, status: 'done', endTime: new Date().toISOString(), gpsLog: `GPS OK (Bypass Mode)` }) });
     await fetchDatabase(); toast('✅ Unloading Selesai!');
   } catch(err) { toast('❌ ' + err, 'err'); }
 }
- 
+
 function getKPIStatus(elapsedTime, maxTime) {
   const rem = maxTime - elapsedTime;
   if(rem < 0) return { cls: 'c-red', txt: `Lewat ${Math.abs(rem)}m`, isCrit: 2 };
   if(rem <= 5) return { cls: 'c-red', txt: `Sisa ${rem}m`, isCrit: 1 };
   return { cls: 'c-green', txt: `Sisa ${rem}m`, isCrit: 0 };
 }
- 
+
 function renderTV() {
   const tbody = document.getElementById('tv-tbody'); if (!tbody) return;
   const activeFleets = fleets.filter(f => f.status && f.status.toLowerCase() !== 'done');
   let violations = 0; let playHighAlarm = false; let playLowAlarm = false;
-  
+
   const enrichedFleets = activeFleets.map(f => {
     const status = f.status.toLowerCase();
     const qDur = f.arrivalTime ? elapsed(f.arrivalTime, f.unloadStartTime) : 0;
@@ -1591,35 +1275,33 @@ function renderTV() {
     f.priorityScore = Math.max(qStat.isCrit, uStat.isCrit);
     f.qDur = qDur; f.qStat = qStat; f.uDur = uDur; f.uStat = uStat; return f;
   });
-  
+
   if (playHighAlarm) playAlarm('critical');
   else if (playLowAlarm) playAlarm('warning');
- 
- enrichedFleets.sort((a, b) => b.priorityScore - a.priorityScore);
- document.getElementById('kc-total').textContent = enrichedFleets.length;
- document.getElementById('kc-queuing').textContent = enrichedFleets.filter(f=>f.status==='queuing').length;
- document.getElementById('kc-unloading').textContent = enrichedFleets.filter(f=>f.status==='unloading').length;
- document.getElementById('kc-violations').textContent = violations;
- document.getElementById('ind-lewat-kpi').textContent = violations;
- 
+
+  enrichedFleets.sort((a, b) => b.priorityScore - a.priorityScore);
+  document.getElementById('kc-total').textContent = enrichedFleets.length;
+  document.getElementById('kc-queuing').textContent = enrichedFleets.filter(f=>f.status==='queuing').length;
+  document.getElementById('kc-unloading').textContent = enrichedFleets.filter(f=>f.status==='unloading').length;
+  document.getElementById('kc-violations').textContent = violations;
+  document.getElementById('ind-lewat-kpi').textContent = violations;
+
   if (!enrichedFleets.length) { tbody.innerHTML = `<tr><td colspan="6"><div style="text-align:center; padding: 20px;">Operasional Clear.</div></td></tr>`; return; }
   
-  let htmlContent = "";
- enrichedFleets.forEach((f, i) => {
+  tbody.innerHTML = enrichedFleets.map((f, i) => {
     const status = f.status.toLowerCase();
     const uMax = status ==='unloading' ? (KPI_UNLOAD[f.fleetSize] || '-') : '-';
-    htmlContent += `<tr>
-    <td>${i+1}</td>
+    return `<tr>
+      <td>${i+1}</td>
       <td>Drv: <b>${f.driverName}</b><br>Chk: <b>${f.checkerName || '-'}</b></td>
-    <td><b>${f.plateNumber}</b><br><small>${f.fleetType}</small></td>
-    <td><span class="status-badge s-${status}">${status}</span></td>
+      <td><b>${f.plateNumber}</b><br><small>${f.fleetType}</small></td>
+      <td><span class="status-badge s-${status}">${status}</span></td>
       <td class="kpi-cell ${f.qStat.cls}">${f.qDur}m / 180m<br><small>${f.qStat.txt}</small></td>
       <td class="kpi-cell ${f.uStat.cls}">${status==='unloading' ? `${f.uDur}m / ${uMax}m<br><small>${f.uStat.txt}</small>` : 'Menunggu'}</td>
     </tr>`;
-  });
-  tbody.innerHTML = htmlContent;
+  }).join('');
 }
- 
+
 function sortTable(n) {
   var table, rows, switching, i, x, y, shouldSwitch, dir, switchcount = 0;
   table = document.getElementById("mainTable"); switching = true; dir = "asc"; 
@@ -1634,399 +1316,10 @@ function sortTable(n) {
     else { if (switchcount == 0 && dir == "asc") { dir = "desc"; switching = true; } }
   }
 }
- 
-// ================= LOGIKA KHUSUS MANAJEMEN SENTIMEN (UPDATED) =================
-let agentMap = null, mapMarkers = [], mapPolylines = [];
-let chartAgentWH = null, chartAgentPerforma = null, chartAgentDonut = null;
- 
-function initAgentModule() {
-  if (!agentMap) {
-    agentMap = L.map('agent-map-canvas').setView([-6.914744, 107.609810], 11);
-  L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-      attribution: '© OpenStreetMap, © CartoDB',
-      maxZoom: 19
-   }).addTo(agentMap);
-  }
-}
- 
-function triggerAgentAnalytics(skipMap = false) {
-  const whFilter = document.getElementById('ag-filter-wh').value;
-  const catFilter = document.getElementById('ag-filter-cat').value;
-  const kotaFilter = document.getElementById('ag-filter-kota').value;
-  const kecFilter = document.getElementById('ag-filter-kec').value;
-  const kelFilter = document.getElementById('ag-filter-kel').value;
- 
-  // 1. Saring Agen Berdasarkan Form Dropdown
-  let filteredAgents = masterAgentData.filter(item => {
-    if (whFilter !== 'all' && item.Kategori_Warehouse !== whFilter) return false;
-    if (catFilter !== 'all' && item.Kategori !== catFilter) return false;
-    if (kotaFilter !== 'all' && item.KOTA !== kotaFilter) return false;
-    if (kecFilter !== 'all' && item.KECAMATAN !== kecFilter) return false;
-    if (kelFilter !== 'all' && item.KELURAHAN !== kelFilter) return false;
-    return true;
-  });
- 
-  // 2. Terapkan Global Cross Filtering
-  if (activeCrossFilter.type !== null) {
-      filteredAgents = filteredAgents.filter(item => {
-          if (activeCrossFilter.type === 'AGENT') return item.Nama_Agen === activeCrossFilter.value;
-          if (activeCrossFilter.type === 'WH_CATEGORY') return item.Kategori_Warehouse === activeCrossFilter.value;
-          if (activeCrossFilter.type === 'DONUT') {
-              if (activeCrossFilter.value.includes('JNE Ekosistem')) return ['JNE'].includes(item.Kategori);
-              if (activeCrossFilter.value.includes('Kompetitor')) return item.Kategori === 'Kompetitor';
-              if (activeCrossFilter.value.includes('Customer')) return item.Kategori === 'Customer';
-          }
-          return true;
-      });
-      document.getElementById('cross-filter-indicator').style.display = 'flex';
-      document.getElementById('cf-text').textContent = activeCrossFilter.value;
-  } else {
-      document.getElementById('cross-filter-indicator').style.display = 'none';
-  }
- 
-  // 3. Saring Daftar Ulasan
-  const allowedAgentNames = new Set(filteredAgents.map(a => a.Nama_Agen));
-  const filteredReviews = masterReviewData.filter(item => allowedAgentNames.has(item.Nama_Agen));
- 
-  updateAgentKPIs(filteredAgents);
- 
-  // Map di-render hanya saat user filter dropdown / cross-filter manual. Interval Auto-Update tidak memicu agar tidak flicker.
-  if (skipMap !== true) {
-       renderAgentMap(filteredAgents);
-  }
- 
-  renderAgentReviews(filteredReviews);
-  renderAgentCharts(filteredAgents);
-  renderAgentTable(filteredAgents);
-}
- 
-// MODIFIKASI FITUR 1: Memperbaiki pencarian Parameter Jumlah Kompetitor agar case-insensitive
-function updateAgentKPIs(data) {
-  let totalRating = 0, totalReviews = 0, locCount = 0;
-  data.forEach(item => {
-    if (item.Kategori !== 'CUSTOMER' && item.Kategori !== 'KOMPETITOR') {
-      totalRating += (parseFloat(item.Rating) || 0);
-      if((parseFloat(item.Rating) || 0) > 0) locCount++;
-    }
-    totalReviews += (parseInt(item.Total_Ulasan) || 0);
-  });
-  
-  document.getElementById('ag-kpi-rating').textContent = locCount > 0 ? (totalRating / locCount).toFixed(1) : "0.0";
-  document.getElementById('ag-kpi-reviews').textContent = totalReviews.toLocaleString('id-ID');
-  document.getElementById('ag-kpi-locations').textContent = data.filter(i => ['WAREHOUSE','AGEN','CASH COUNTER'].includes(i.Kategori_Warehouse)).length;
-  document.getElementById('ag-kpi-matched').textContent = data.length;
-  document.getElementById('ag-kpi-kompetitor').textContent = data.filter(i => i.Kategori && i.Kategori.toLowerCase() === 'kompetitor').length;
-}
- 
-let hoverPolylines = [];
-function clearHoverLines() {
-    hoverPolylines.forEach(p => agentMap.removeLayer(p));
-    hoverPolylines = [];
-}
- 
-// MODIFIKASI FITUR 2 & 3: Penambahan kalkulasi Jarak Terdekat + Link Google Maps Rute Terintegrasi
-function renderAgentMap(data) {
-  mapMarkers.forEach(m => agentMap.removeLayer(m));
-  mapPolylines.forEach(p => agentMap.removeLayer(p));
-  mapMarkers = []; mapPolylines = [];
- 
-  if (data.length === 0) return;
- 
-  data.forEach(item => {
-    if (!item.Latitude || !item.Longitude) return;
- 
-    let markerIcon;
-    if (item.Kategori === 'Kompetitor') {
-        markerIcon = L.icon({ iconUrl: 'https://raw.githubusercontent.com/atteachmad/db-nadi-bdo/main/kompetitor.png', iconSize: [28,28], iconAnchor:[14,28], className: 'komp-custom-marker' });
-    } else if (item.Kategori === 'Customer') {
-        markerIcon = L.divIcon({ html: '<i class="fa-solid fa-house-user" style="color:#10b981; font-size:20px; text-shadow:1px 1px 2px rgba(0,0,0,0.5);"></i>', className: '', iconSize: [20,20], iconAnchor:[10,20] });
-    } else {
-        markerIcon = L.icon({ iconUrl: 'https://raw.githubusercontent.com/atteachmad/db-nadi-bdo/main/joni.png', iconSize: [32, 32], iconAnchor: [16, 32], className: 'jne-custom-marker' });
-    }
- 
-    const customMarker = L.marker([item.Latitude, item.Longitude], { icon: markerIcon }).addTo(agentMap);
- 
-    // Kalkulasi Jarak Terdekat Khusus Entitas JNE ke Kompetitor & Customer Terdekat
-    let nearestComp = null;
-    let minCompDist = Infinity;
-    let nearestCust = null;
-    let minCustDist = Infinity;
-    let distanceHTML = "";
-    let gmapsUrl = item.Link_Maps || `https://www.google.com/maps/search/?api=1&query=${item.Latitude},${item.Longitude}`;
- 
-    if (item.Kategori !== 'Kompetitor' && item.Kategori !== 'Customer') {
-        data.forEach(subItem => {
-            if (subItem.Latitude && subItem.Longitude) {
-                let d = getDistance(item.Latitude, item.Longitude, subItem.Latitude, subItem.Longitude);
-                if (subItem.Kategori && subItem.Kategori.toLowerCase() === 'kompetitor') {
-                    if (d < minCompDist) { minCompDist = d; nearestComp = subItem; }
-                } else if (subItem.Kategori && subItem.Kategori.toLowerCase() === 'customer') {
-                    if (d < minCustDist) { minCustDist = d; nearestCust = subItem; }
-                }
-            }
-        });
- 
-        let cText = nearestComp ? `${nearestComp.Nama_Agen} (${minCompDist < 1000 ? Math.round(minCompDist) + ' m' : (minCompDist/1000).toFixed(2) + ' km'})` : '-';
-        let custText = nearestCust ? `${nearestCust.Nama_Agen} (${minCustDist < 1000 ? Math.round(minCustDist) + ' m' : (minCustDist/1000).toFixed(2) + ' km'})` : '-';
- 
-        distanceHTML = `
-            <div style="margin-top: 6px; padding-top: 6px; border-top: 1px dashed rgba(255,255,255,0.2); font-size: 11px; text-align: left; line-height: 1.3;">
-                <span style="color: #ef4444;"><i class="fa-solid fa-store"></i> <b>Komp Terdekat:</b><br>${cText}</span><br>
-                <span style="color: #10b981;"><i class="fa-solid fa-house-user"></i> <b>Cust Terdekat:</b><br>${custText}</span>
-            </div>
-        `;
- 
-        // Mengubah URL Maps menjadi Rute Terintegrasi jika entitas terdekat valid ditemukan
-        if (nearestComp && nearestCust) {
-            gmapsUrl = `https://www.google.com/maps/dir/?api=1&origin=${item.Latitude},${item.Longitude}&destination=${nearestComp.Latitude},${nearestComp.Longitude}&waypoints=${nearestCust.Latitude},${nearestCust.Longitude}`;
-        } else if (nearestCust) {
-            gmapsUrl = `https://www.google.com/maps/dir/?api=1&origin=${item.Latitude},${item.Longitude}&destination=${nearestCust.Latitude},${nearestCust.Longitude}`;
-        } else if (nearestComp) {
-            gmapsUrl = `https://www.google.com/maps/dir/?api=1&origin=${item.Latitude},${item.Longitude}&destination=${nearestComp.Latitude},${nearestComp.Longitude}`;
-        }
-    }
- 
-    // Hover Modern Tooltip terisi info jarak komprehensif
-    const tooltipHTML = `
-        <div style="text-align:center; font-family:'Nunito',sans-serif; min-width: 150px;">
-            <div style="color:var(--blue);font-size:14px;font-weight:bold;margin-bottom:4px;border-bottom:1px solid rgba(255,255,255,0.1);padding-bottom:4px;">${item.Nama_Agen}</div>
-            <div style="color:var(--amber);font-size:12px;font-weight:bold;">⭐ ${item.Rating > 0 ? item.Rating : '-'} | 💬 ${item.Total_Ulasan} Ulasan</div>
-            <div style="color:var(--green);font-size:10px;text-transform:uppercase;margin-top:4px;">${item.Kategori_Warehouse}</div>
-            ${distanceHTML}
-        </div>
-    `;
-    customMarker.bindTooltip(tooltipHTML, { direction: 'top', offset: [0, -20], className: 'modern-tooltip' });
-    
-    // Popup interaktif saat diklik memicu link rute otomatis ke Google Maps
-    const popupHTML = `
-        <div style="text-align:center; padding: 5px; font-family:'Nunito',sans-serif;">
-            <div style="color:var(--amber); font-size: 14px; font-weight:bold; margin-bottom: 8px;">${item.Nama_Agen}</div>
-            <a href="${gmapsUrl}" target="_blank" style="background:var(--blue); color:#fff; padding:6px 12px; border-radius:6px; text-decoration:none; font-size:12px; font-weight:bold; display:inline-block;"><i class="fa-solid fa-map"></i> Buka Google Maps Rute</a>
-        </div>
-    `;
-    customMarker.bindPopup(popupHTML, {className: 'modern-popup'});
-    
-    customMarker.on('click', () => { 
-        setCrossFilter('AGENT', item.Nama_Agen); 
-    });
- 
-    customMarker.on('mouseover', function() {
-        this.openTooltip();
-        if (['JNE', 'Kompetitor'].includes(item.Kategori) || item.Kategori.toLowerCase() === 'kompetitor') {
-            clearHoverLines();
-            if (nearestCust) {
-                const polyCust = L.polyline([[item.Latitude, item.Longitude], [nearestCust.Latitude, nearestCust.Longitude]], {color: '#10b981', weight: 2, dashArray: '5, 8'}).addTo(agentMap);
-                hoverPolylines.push(polyCust);
-            }
-            if (nearestComp) {
-                const polyComp = L.polyline([[item.Latitude, item.Longitude], [nearestComp.Latitude, nearestComp.Longitude]], {color: '#ef4444', weight: 2, dashArray: '5, 8'}).addTo(agentMap);
-                hoverPolylines.push(polyComp);
-            }
-        }
-    });
- 
-    customMarker.on('mouseout', function() {
-        this.closeTooltip();
-        clearHoverLines();
-    });
- 
-  mapMarkers.push(customMarker);
-  });
- 
-  const group = new L.featureGroup(mapMarkers);
-  if(mapMarkers.length > 0) agentMap.fitBounds(group.getBounds().pad(0.1));
-}
- 
-function renderAgentReviews(reviewData) {
-  const container = document.getElementById('ag-reviews-list'); if(!container) return;
-  
-  if(reviewData.length === 0) {
-   container.innerHTML = '<div style="color:var(--text2);text-align:center;padding:20px;">Tidak ada ulasan pada data yang difilter.</div>';
-  document.getElementById('ag-text-summary').innerHTML = "Belum ada teks ulasan yang memadai untuk dianalisa.";
-    return;
-  }
- 
-  let totalScore = 0;
-  let htmlContent = ""; 
- 
-  const limitedReviews = reviewData.slice(0, 50);
- 
-  limitedReviews.forEach(item => {
-    totalScore += (item.Rating_Ulasan || 0);
-    let sentimentClass = "sent-neu"; let sentText = "NETRAL";
-    if (item.Rating_Ulasan >= 4.0) { sentimentClass = "sent-pos"; sentText = "POSITIF"; }
-    else if (item.Rating_Ulasan <= 3.0) { sentimentClass = "sent-neg"; sentText = "NEGATIF"; }
- 
-    htmlContent += `
-      <div class="review-item-card">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
-          <span style="font-weight:700; font-size:13px; color:var(--text);">${item.Nama_Agen}</span>
-          <span class="sentiment-pill ${sentimentClass}">${sentText}</span>
-        </div>
-        <div style="font-size:11px; color:var(--amber); margin-bottom:4px;">⭐ ${item.Rating_Ulasan.toFixed(1)}</div>
-        <p style="font-size:12px; color:var(--text2); line-height:1.4;">"${item.Teks_Ulasan}"</p>
-      </div>
-    `;
-  });
- 
-  container.innerHTML = htmlContent; 
- 
-  const avg = totalScore / limitedReviews.length;
-  const summaryText = document.getElementById('ag-text-summary');
-  if (avg >= 4.0) summaryText.innerHTML = "<b>Dominan Positif:</b> Pelanggan sangat puas dengan pelayanan yang ada. Pertahankan kualitas pelayanan di titik agen terkait.";
-  else if (avg <= 2.5) summaryText.innerHTML = "<b>Perhatian Kritis:</b> Ditemukan sentimen negatif berulang terkait proses tracking dan kecepatan layanan operasional.";
-  else summaryText.innerHTML = "<b>Sentimen Netral:</b> Pelayanan dinilai standar dan stabil, namun ada sedikit ruang perbaikan agar customer lebih puas.";
-}
- 
-function renderAgentCharts(data) {
-  const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
-  const textColor = isDark ? '#e2eaf5' : '#4b5563';
-  Chart.defaults.color = textColor;
- Chart.defaults.font.family = "'Nunito', sans-serif";
- 
-  // Chart 1
-  const whLabels = ['WAREHOUSE', 'AGEN', 'CASH COUNTER'];
-  const whValues = whLabels.map(label => {
-    const matched = data.filter(i => i.Kategori_Warehouse === label && i.Rating > 0);
-    if(matched.length === 0) return 0;
-    return matched.reduce((acc, curr) => acc + curr.Rating, 0) / matched.length;
-  });
- 
-  const ctxWH = document.getElementById('ag-chart-wh');
-  if(ctxWH) {
-    if (chartAgentWH) chartAgentWH.destroy();
-    chartAgentWH = new Chart(ctxWH, {
-      type: 'bar',
-      data: {
-        labels: whLabels,
-        datasets: [{ data: whValues, backgroundColor: '#f59e0b', borderRadius: 12, barThickness: 30 }]
-      },
-      options: {
-        responsive: true, maintainAspectRatio: false,
-        plugins: { legend: { display: false } },
-        scales: { y: { min: 0, max: 5 }, x: { grid: { display: false } } },
-        onClick: (e, activeEls) => {
-            if (activeEls.length > 0) {
-                const label = whLabels[activeEls[0].index];
-               setCrossFilter('WH_CATEGORY', label);
-            }
-        }
-      }
-    });
-  }
- 
-  // Chart 2
-  const agentItems = data.filter(i => ['WAREHOUSE','AGEN','CASH COUNTER'].includes(i.Kategori_Warehouse) && i.Rating > 0).sort((a,b) => b.Rating - a.Rating).slice(0, 5);
-  chartAgentFullNames = agentItems.map(i => i.Nama_Agen);
- 
-  const ctxAgent = document.getElementById('ag-chart-agent');
-  if(ctxAgent) {
-    if (chartAgentPerforma) chartAgentPerforma.destroy();
-    chartAgentPerforma = new Chart(ctxAgent, {
-      type: 'bar',
-      data: {
-        labels: agentItems.map(i => i.Nama_Agen.substring(0, 15) + '...'),
-        datasets: [{ data: agentItems.map(i => i.Rating), backgroundColor: '#38bdf8', borderRadius: 12, barThickness: 25 }]
-      },
-      options: {
-        responsive: true, maintainAspectRatio: false, indexAxis: 'y',
-        plugins: { legend: { display: false }, tooltip: { callbacks: { title: (ctx) => chartAgentFullNames[ctx[0].dataIndex] } } },
-        scales: { x: { min: 0, max: 5 }, y: { grid: { display: false } } },
-        onClick: (e, activeEls) => {
-            if (activeEls.length > 0) {
-                const fullName = chartAgentFullNames[activeEls[0].index];
-               setCrossFilter('AGENT', fullName);
-            }
-        }
-      }
-    });
-  }
- 
-  // Chart 3 (Donut dengan Hitungan di Label)
-  const jneCount = data.filter(i => ['JNE'].includes(i.Kategori)).length;
-  const kompCount = data.filter(i => i.Kategori === 'Kompetitor' || (i.Kategori && i.Kategori.toLowerCase() === 'kompetitor')).length;
-  const custCount = data.filter(i => i.Kategori === 'Customer' || (i.Kategori && i.Kategori.toLowerCase() === 'customer')).length;
-  
-  const donutLabels = [`JNE Ekosistem (${jneCount})`, `Kompetitor (${kompCount})`, `Customer (${custCount})`];
-  const donutValues = [jneCount, kompCount, custCount];
- 
-  const ctxDonut = document.getElementById('ag-chart-donut');
-  if(ctxDonut) {
-    if (chartAgentDonut) chartAgentDonut.destroy();
-    chartAgentDonut = new Chart(ctxDonut, {
-      type: 'doughnut',
-      data: {
-        labels: donutLabels,
-        datasets: [{ data: donutValues, backgroundColor: ['#f59e0b', '#ef4444', '#10b981'], borderWidth: 0, hoverOffset: 4 }]
-      },
-      options: { 
-        responsive: true, maintainAspectRatio: false, cutout: '70%', 
-        plugins: { legend: { position: 'bottom' } },
-        onClick: (e, activeEls) => {
-            if (activeEls.length > 0) {
-                const label = donutLabels[activeEls[0].index];
-                setCrossFilter('DONUT', label);
-            }
-        }
-      }
-    });
-  }
-}
- 
-function renderAgentTable(data) {
-  const tbody = document.getElementById('ag-table-body'); if(!tbody) return;
- 
-  if(data.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:20px;color:var(--text2);">Data kosong atau filter tidak cocok.</td></tr>';
-    return;
-  }
- 
-  let htmlContent = ""; 
-  data.forEach(item => {
-    let statCls = 's-queuing';
-  if(item.Kategori === 'Kompetitor' || item.Kategori.toLowerCase() === 'kompetitor') statCls = 's-unloading';
-  if(item.Kategori === 'Customer' || item.Kategori.toLowerCase() === 'customer') statCls = 's-done';
-    
-    const escapedName = item.Nama_Agen.replace(/'/g, "\\'").replace(/"/g, "&quot;");
- 
-    htmlContent += `
-      <tr onclick="setCrossFilter('AGENT', '${escapedName}')" style="cursor:pointer;" title="Klik untuk memfilter (Cross-Filtering)" class="cross-hover">
-        <td style="font-weight:700; color:var(--text);">${item.Nama_Agen}</td>
-       <td><b style="color:var(--amber)">⭐ ${item.Rating > 0 ? item.Rating.toFixed(1) : '-'}</b></td>
-        <td style="font-family:'IBM Plex Mono',monospace;">${item.Total_Ulasan}</td>
-      <td><span class="status-badge ${statCls}" style="font-size:10px;">${item.Kategori_Warehouse}</span></td>
-      <td>${item.KOTA}</td>
-      <td><span style="color:var(--text2);">${item.KECAMATAN} / ${item.KELURAHAN}</span></td>
-      </tr>
-    `;
-  });
-  
-  tbody.innerHTML = htmlContent; 
-}
- 
-let agentSortDirection = false;
-function sortAgentTable(columnIndex) {
-  agentSortDirection = !agentSortDirection;
-  const keys = ['Nama_Agen', 'Rating', 'Total_Ulasan', 'Kategori', 'KOTA', 'AREA'];
-  const key = keys[columnIndex];
- 
- masterAgentData.sort((a, b) => {
-    let valA = a[key] || ''; let valB = b[key] || '';
-    if (typeof valA === 'string') {
-      return agentSortDirection ? valA.localeCompare(valB) : valB.localeCompare(valA);
-    } else {
-      return agentSortDirection ? valA - valB : valB - valA;
-    }
-  });
- triggerAgentAnalytics();
-}
- 
-// START SISTEM
+
 fetchDatabase();
-// Auto load first view
-setView('tv');
-// Interval refresh 60 detik
-setInterval(fetchDatabase, 60000);
+setView('tv'); 
+setInterval(fetchDatabase, 15000);
 </script>
 </body>
 </html>
