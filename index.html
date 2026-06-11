@@ -10,7 +10,7 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@4/dist/tesseract.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-
+ 
   <style>
     :root { 
       --bg: #050d1a; --surface: #0d1b2e; --surface2: #132038; --border: #1e3354; 
@@ -19,13 +19,13 @@
       --red: #ef4444; --red-dim: rgba(239,68,68,0.12); --blue: #38bdf8; --blue-dim: rgba(56,189,248,0.12); 
       --sidebar-bg: #0b1524;
     }
-
-    [data-theme="light"] {
+ 
+   [data-theme="light"] {
       --bg: #f4f7f9; --surface: #ffffff; --surface2: #f1f5f9; --border: #cbd5e1; 
       --text: #0f172a; --text2: #64748b; --sidebar-bg: #ffffff;
     }
     
-    ::-webkit-scrollbar { display: none; }
+   ::-webkit-scrollbar { display: none; }
     * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
     
     html { background: var(--bg); min-height: 100%; transition: background-color 0.3s; }
@@ -33,10 +33,10 @@
     
     .view-header { display: flex; align-items: center; gap: 15px; margin-bottom: 18px; }
     .hamburger-inline { background: transparent; border: none; color: var(--text); font-size: 24px; cursor: pointer; transition: 0.2s; padding: 0; }
-    .hamburger-inline:hover { color: var(--amber); }
-
+   .hamburger-inline:hover { color: var(--amber); }
+ 
     .sidebar-overlay { display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; height: 100dvh; background: rgba(0,0,0,0.6); z-index: 999; backdrop-filter: blur(2px); opacity: 0; transition: opacity 0.3s; }
-    .sidebar-overlay.show { display: block; opacity: 1; }
+   .sidebar-overlay.show { display: block; opacity: 1; }
     
     .sidebar { position: fixed; top: 0; left: -300px; width: 280px; height: 100vh; height: 100dvh; background: var(--sidebar-bg); border-right: 1px solid var(--border); z-index: 1000; overflow-y: auto; transition: transform 0.4s cubic-bezier(0.25, 0.8, 0.25, 1); box-shadow: 4px 0 15px rgba(0,0,0,0.2); display: flex; flex-direction: column; }
     .sidebar.open { transform: translateX(300px); }
@@ -66,7 +66,7 @@
     @keyframes glow { 0%,100% { box-shadow: 0 0 5px var(--blue); } 50% { box-shadow: 0 0 15px var(--blue); } }
     .text-glow { color: var(--blue) !important; text-shadow: 0 0 5px rgba(56,189,248,0.5); }
     
-    .theme-switch-wrapper { padding: 15px 20px; border-top: 1px solid var(--border); margin-top: 20px; display: flex; align-items: center; justify-content: space-between; }
+   .theme-switch-wrapper { padding: 15px 20px; border-top: 1px solid var(--border); margin-top: 20px; display: flex; align-items: center; justify-content: space-between; }
     .theme-label { display: flex; align-items: center; gap: 10px; font-size: 14px; font-weight: 600; color: var(--text); }
     .switch { position: relative; display: inline-block; width: 44px; height: 24px; }
     .switch input { opacity: 0; width: 0; height: 0; }
@@ -74,7 +74,7 @@
     .slider:before { position: absolute; content: ""; height: 16px; width: 16px; left: 3px; bottom: 3px; background-color: var(--text2); transition: .4s; border-radius: 50%; }
     input:checked + .slider { background-color: var(--amber); border-color: var(--amber); }
     input:checked + .slider:before { transform: translateX(20px); background-color: #fff; }
-
+ 
     .view { display: none; min-height: 100%; } .view.active { display: block; animation: fadeIn 0.4s; }
     @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
     
@@ -88,6 +88,10 @@
     .form-input { padding-right: 44px; }
     .form-input:focus, .form-select:focus { border-color: var(--amber); }
     
+    /* MODIFIKASI: Filter tanggal icon menjadi warna putih (Invert warna) */
+    input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(1); cursor: pointer; }
+    [data-theme="light"] input[type="date"]::-webkit-calendar-picker-indicator { filter: none; }
+
     .mic-icon { position: absolute; right: 12px; bottom: 10px; cursor: pointer; transition: 0.2s; display: flex; align-items: center; justify-content: center; }
     .mic-icon svg { stroke: rgba(239, 68, 68, 0.5); }
     .mic-icon:hover svg, .mic-icon.active svg { stroke: #ef4444; }
@@ -118,13 +122,13 @@
     .kpi-card-val { font-family: 'IBM Plex Mono', monospace; font-size: 42px; font-weight: 600; }
     
     .table-container { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; box-shadow: 0 6px 12px rgba(0,0,0,0.15); }
-    .table-header-custom { display: flex; justify-content: space-between; align-items: center; background: rgba(13, 27, 46, 0.6); padding: 16px 20px; border-bottom: 1px solid var(--border); }
+   .table-header-custom { display: flex; justify-content: space-between; align-items: center; background: rgba(13, 27, 46, 0.6); padding: 16px 20px; border-bottom: 1px solid var(--border); }
     .table-title { font-family: 'Rajdhani', sans-serif; font-size: 18px; font-weight: 700; text-transform: uppercase; color: var(--amber); letter-spacing: 1px; }
-    .live-kpi-indicators { display: flex; align-items: center; gap: 15px; font-family: 'IBM Plex Mono', monospace; font-size: 13px; font-weight: bold; }
+   .live-kpi-indicators { display: flex; align-items: center; gap: 15px; font-family: 'IBM Plex Mono', monospace; font-size: 13px; font-weight: bold; }
     .kpi-alert-box { background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.3); padding: 4px 10px; border-radius: 6px; color: var(--red); }
     .live-dot { display: inline-flex; align-items: center; gap: 6px; color: var(--green); animation: blink 1.5s infinite; }
     .live-dot::before { content: ""; display: inline-block; width: 8px; height: 8px; background-color: var(--green); border-radius: 50%; }
-
+ 
     .table-wrap { width: 100%; overflow-x: auto; }
     table { width: 100%; border-collapse: collapse; }
     th { padding: 14px 20px; text-align: left; font-family: 'Rajdhani', sans-serif; font-size: 12px; font-weight: 700; text-transform: uppercase; color: var(--text2); border-bottom: 1px solid var(--border); cursor: pointer; user-select: none; }
@@ -137,180 +141,110 @@
     .toast { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%) translateY(100px); padding: 12px 24px; border-radius: 30px; font-family: 'Rajdhani', sans-serif; font-size: 15px; font-weight: 700; z-index: 9999; transition: transform 0.3s; color: #fff; box-shadow: 0 4px 12px rgba(0,0,0,0.3); }
     .toast.show { transform: translateX(-50%) translateY(0); }
     .toast-ok { background: var(--green); } .toast-err { background: var(--red); }
-
+ 
     .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; height: 100dvh; background: rgba(0,0,0,0.7); z-index: 10000; justify-content: center; align-items: center; }
     .modal-box { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 20px; width: 90%; max-width: 450px; position: relative; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
     .modal-close { position: absolute; top: 10px; right: 15px; color: var(--red); font-size: 20px; font-weight: bold; cursor: pointer; }
     .modal-title { font-family: 'Rajdhani', sans-serif; font-size: 20px; font-weight: bold; color: var(--amber); margin-bottom: 15px; text-transform: uppercase; border-bottom: 1px solid var(--border); padding-bottom: 10px; }
     .modal-body { font-size: 14px; line-height: 1.6; color: var(--text); }
     .modal-body a { color: var(--blue); text-decoration: none; }
-
-    .skeuo-card {
-      background: var(--surface);
-      border-radius: 16px;
-      padding: 20px;
-      box-shadow: 6px 6px 12px rgba(0,0,0,0.4), -6px -6px 12px rgba(255,255,255,0.03);
-      border: 1px solid rgba(255,255,255,0.02);
-      transition: all 0.3s ease;
-    }
-    
-    .skeuo-input {
-      background: var(--surface);
-      border: none;
-      box-shadow: inset 3px 3px 6px rgba(0,0,0,0.5), inset -3px -3px 6px rgba(255,255,255,0.04);
-      color: var(--text);
-      border-radius: 10px;
-      padding: 10px 14px;
-      width: 100%;
-      outline: none;
-      font-family: 'Nunito', sans-serif;
-    }
-    
-    .skeuo-input:focus {
-      outline: 2px solid var(--amber);
-    }
-    
-    .skeuo-btn {
-      padding: 12px 20px;
-      border-radius: 10px;
-      border: none;
-      font-family: 'Rajdhani', sans-serif;
-      font-size: 15px;
-      font-weight: bold;
-      cursor: pointer;
-      transition: 0.2s;
-      box-shadow: 4px 4px 8px rgba(0,0,0,0.4), -4px -4px 8px rgba(255,255,255,0.03);
-    }
-    
-    .skeuo-btn:active {
-      box-shadow: inset 3px 3px 6px rgba(0,0,0,0.5), inset -3px -3px 6px rgba(255,255,255,0.04);
-    }
-
-    [data-theme="light"] .skeuo-card {
-      box-shadow: 6px 6px 12px #d1d9e6, -6px -6px 12px #ffffff;
-      border: none;
-    }
-    [data-theme="light"] .skeuo-input {
-      box-shadow: inset 4px 4px 8px #d1d9e6, inset -4px -4px 8px #ffffff;
-    }
-    [data-theme="light"] .skeuo-btn {
-      box-shadow: 4px 4px 8px #d1d9e6, -4px -4px 8px #ffffff;
-    }
-    [data-theme="light"] .skeuo-btn:active {
-      box-shadow: inset 4px 4px 8px #d1d9e6, inset -4px -4px 8px #ffffff;
-    }
-
-    .ai-box {
-      border-left: 4px solid var(--blue);
-      background: linear-gradient(135deg, var(--surface), rgba(56,189,248,0.05));
-    }
-    
+ 
+    .skeuo-card { background: var(--surface); border-radius: 16px; padding: 20px; box-shadow: 6px 6px 12px rgba(0,0,0,0.4), -6px -6px 12px rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.02); transition: all 0.3s ease; }
+    .skeuo-input { background: var(--surface); border: none; box-shadow: inset 3px 3px 6px rgba(0,0,0,0.5), inset -3px -3px 6px rgba(255,255,255,0.04); color: var(--text); border-radius: 10px; padding: 10px 14px; width: 100%; outline: none; font-family: 'Nunito', sans-serif; }
+    .skeuo-input:focus { outline: 2px solid var(--amber); }
+    .skeuo-btn { padding: 12px 20px; border-radius: 10px; border: none; font-family: 'Rajdhani', sans-serif; font-size: 15px; font-weight: bold; cursor: pointer; transition: 0.2s; box-shadow: 4px 4px 8px rgba(0,0,0,0.4), -4px -4px 8px rgba(255,255,255,0.03); }
+    .skeuo-btn:active { box-shadow: inset 3px 3px 6px rgba(0,0,0,0.5), inset -3px -3px 6px rgba(255,255,255,0.04); }
+ 
+   [data-theme="light"] .skeuo-card { box-shadow: 6px 6px 12px #d1d9e6, -6px -6px 12px #ffffff; border: none; }
+   [data-theme="light"] .skeuo-input { box-shadow: inset 4px 4px 8px #d1d9e6, inset -4px -4px 8px #ffffff; }
+   [data-theme="light"] .skeuo-btn { box-shadow: 4px 4px 8px #d1d9e6, -4px -4px 8px #ffffff; }
+    [data-theme="light"] .skeuo-btn:active { box-shadow: inset 4px 4px 8px #d1d9e6, inset -4px -4px 8px #ffffff; }
+ 
+    .ai-box { border-left: 4px solid var(--blue); background: linear-gradient(135deg, var(--surface), rgba(56,189,248,0.05)); }
     .chart-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; margin-bottom: 20px; }
     .chart-title { font-family: 'Rajdhani', sans-serif; font-size: 16px; font-weight: 700; color: var(--amber); margin-bottom: 15px; text-transform: uppercase; }
-
+ 
+    /* Login Specific CSS */
+    .login-container { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; padding: 20px; }
+    .login-box { max-width: 400px; width: 100%; text-align: center; }
+    
     @media (max-width: 600px) {
-      .modal-box {
-        position: absolute;
-        top: 0;
-        bottom: 0;
-        left: 0;
-        right: 0;
-        width: 100% !important;
-        height: 100% !important;
-        max-width: none !important;
-        border-radius: 0 !important;
-        border: none !important;
-        overflow-y: auto;
-        padding: 24px;
-        display: flex;
-        flex-direction: column;
-      }
-      .modal-close {
-        top: 20px;
-        right: 20px;
-        font-size: 28px;
-        padding: 5px;
-        z-index: 9999;
-      }
+      .modal-box { position: absolute; top: 0; bottom: 0; left: 0; right: 0; width: 100% !important; height: 100% !important; max-width: none !important; border-radius: 0 !important; border: none !important; overflow-y: auto; padding: 24px; display: flex; flex-direction: column; }
+      .modal-close { top: 20px; right: 20px; font-size: 28px; padding: 5px; z-index: 9999; }
     }
   </style>
 </head>
 <body>
-
+ 
+<div id="view-login" class="view active">
+  <div class="login-container">
+    <div class="login-box skeuo-card">
+      <img src="logo-nadi.png" alt="Logo NADI" style="width: 80px; margin-bottom: 20px;">
+      <h2 style="font-family: 'Rajdhani', sans-serif; color: var(--amber); margin-bottom: 5px;">DB-NADI PORTAL</h2>
+      <p style="font-size: 13px; color: var(--text2); margin-bottom: 30px;">Login untuk masuk ke sistem monitoring</p>
+      
+      <div class="form-group" style="text-align: left;">
+        <label class="form-label">Username</label>
+        <input type="text" id="login-user" class="skeuo-input" placeholder="Masukkan NIK, Pass (misal :andi003)">
+      </div>
+      <div class="form-group" style="text-align: left; margin-bottom: 25px;">
+        <label class="form-label">Password</label>
+        <input type="password" id="login-pass" class="skeuo-input" placeholder="••••••••" onkeypress="if(event.key === 'Enter') handleLogin()">
+      </div>
+      <button class="skeuo-btn btn-primary" style="width: 100%;" onclick="handleLogin()">Masuk <i class="fa-solid fa-arrow-right-to-bracket"></i></button>
+    </div>
+  </div>
+</div>
+ 
 <div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
-
-<nav class="sidebar" id="sidebar">
+ 
+<nav class="sidebar" id="sidebar" style="display: none;">
   <div class="sidebar-header">
     <div class="sidebar-logo">
-    <img src="logo-nadi.png" alt="Logo NADI" style="width: 40px; height: auto;">
+      <img src="logo-nadi.png" alt="Logo NADI" style="width: 40px; height: auto;">
     </div>
-      <div class="sidebar-title">
+    <div class="sidebar-title">
       DB-NADI
       <div class="sidebar-badges">
-        <span class="sidebar-badge">Web v2.1.0</span>
-        <span class="sidebar-badge">Android v1.6.0</span>
+        <span class="sidebar-badge">Web v3.0</span>
+        <span class="sidebar-badge" id="user-location-badge">ALL</span>
       </div>
     </div>
   </div>
-
+ 
   <div class="sidebar-section">NAVIGASI UTAMA</div>
   <ul class="sidebar-menu">
     <li><a href="#"><i class="fa-solid fa-truck-fast"></i> Firstmile</a></li>
     <li class="has-submenu">
       <a href="#" class="toggle-submenu"><i class="fa-solid fa-route"></i> Midmile <i class="fa-solid fa-chevron-down caret"></i></a>
-      <ul class="submenu">
-        <li><a href="#" onclick="setView('security'); closeSidebar();"><i class="fa-solid fa-shield-halved"></i> Security</a></li>
-        <li><a href="#" onclick="setView('checker'); closeSidebar();"><i class="fa-solid fa-clipboard-check"></i> Checker</a></li>
-        <li><a href="#" onclick="setView('tv'); closeSidebar();"><i class="fa-solid fa-tv"></i> Dashboard TV</a></li>
-        <li><a href="#" onclick="setView('armada'); closeSidebar();"><i class="fa-solid fa-chart-pie"></i> Analitik Armada</a></li>
+      <ul class="submenu" id="menu-midmile">
+        <li id="menu-security" style="display:none;"><a href="#" onclick="setView('security'); closeSidebar();"><i class="fa-solid fa-shield-halved"></i> Security</a></li>
+        <li id="menu-checker" style="display:none;"><a href="#" onclick="setView('checker'); closeSidebar();"><i class="fa-solid fa-clipboard-check"></i> Checker</a></li>
+        <li id="menu-tv" style="display:none;"><a href="#" onclick="setView('tv'); closeSidebar();"><i class="fa-solid fa-tv"></i> Dashboard TV</a></li>
+        <li id="menu-armada" style="display:none;"><a href="#" onclick="setView('armada'); closeSidebar();"><i class="fa-solid fa-chart-pie"></i> Analitik Armada</a></li>
       </ul>
     </li>
     <li><a href="#"><i class="fa-solid fa-box-check"></i> Lastmile</a></li>
   </ul>
-
+ 
   <div class="sidebar-section">ANALITIK</div>
   <ul class="sidebar-menu">
-    <li class="has-submenu">
-      <a href="#" class="toggle-submenu"><i class="fa-solid fa-chart-line"></i> Laporan Kinerja <i class="fa-solid fa-chevron-down caret"></i></a>
-      <ul class="submenu">
-        <li><a href="#">Laporan Mingguan</a></li>
-        <li><a href="#">Laporan Bulanan</a></li>
-        <li><a href="#">Perbandingan Periode</a></li>
-      </ul>
-    </li>
-    <li class="has-submenu">
-      <a href="#" class="toggle-submenu"><i class="fa-solid fa-users-gear"></i> Manajemen Agen <i class="fa-solid fa-chevron-down caret"></i></a>
-      <ul class="submenu">
-        <li><a href="#">Daftar Semua Agen</a></li>
-        <li><a href="#">Top Performa</a></li>
-        <li><a href="#">Monitoring Area</a></li>
-      </ul>
-    </li>
-    <li class="has-submenu">
-      <a href="#" class="toggle-submenu"><i class="fa-solid fa-boxes-stacked"></i> Pengiriman <i class="fa-solid fa-chevron-down caret"></i></a>
-      <ul class="submenu">
-        <li><a href="#">Status Paket</a></li>
-        <li><a href="#">SLA Tracking</a></li>
-        <li><a href="#">Keluhan Pengiriman</a></li>
-      </ul>
-    </li>
-    <li>
-      <a href="#" onclick="setView('ai'); closeSidebar();" class="text-glow"><i class="fa-solid fa-robot"></i> Fitur AI <span class="badge-new">NEW</span></a>
-    </li>
+    <li><a href="#" onclick="setView('ai'); closeSidebar();" class="text-glow"><i class="fa-solid fa-robot"></i> Fitur AI <span class="badge-new">NEW</span></a></li>
   </ul>
-
+ 
   <div class="sidebar-section">PENGEMBANGAN</div>
   <ul class="sidebar-menu">
     <li class="has-submenu">
       <a href="#" class="toggle-submenu"><i class="fa-solid fa-circle-question"></i> Bantuan & Info <i class="fa-solid fa-chevron-down caret"></i></a>
       <ul class="submenu">
-        <li><a href="#" onclick="openModal('modalAbout'); closeSidebar();">ℹ️ About DB-NADI</a></li>
-        <li><a href="#" onclick="openModal('modalHelpCenter'); closeSidebar();">💡 Help Center</a></li>
-        <li><a href="#" onclick="openModal('modalCreator'); closeSidebar();">👤 Profil Kreator</a></li>
+       <li><a href="#" onclick="openModal('modalAbout'); closeSidebar();">ℹ️ About DB-NADI</a></li>
+       <li><a href="#" onclick="openModal('modalHelpCenter'); closeSidebar();">💡 Help Center</a></li>
+       <li><a href="#" onclick="openModal('modalCreator'); closeSidebar();">👤 Profil Kreator</a></li>
       </ul>
     </li>
+    <li><a href="#" onclick="logout(); closeSidebar();"><i class="fa-solid fa-power-off" style="color: var(--red);"></i> Keluar / Logout</a></li>
   </ul>
-
+ 
   <div class="theme-switch-wrapper">
     <div class="theme-label"><i class="fa-solid fa-moon"></i> Mode Gelap</div>
     <label class="switch">
@@ -319,7 +253,7 @@
     </label>
   </div>
 </nav>
-
+ 
 <div id="view-security" class="view">
   <div class="mobile-container">
     <div class="view-header">
@@ -331,10 +265,7 @@
     
     <div class="form-group">
       <label class="form-label">Nama Security</label>
-      <input class="form-input" id="f-secname" type="text" placeholder="Petugas yang berjaga..." />
-      <span class="mic-icon" onclick="startDictation('f-secname', this)">
-        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line></svg>
-      </span>
+      <input class="form-input" id="f-secname" type="text" readonly style="background: var(--bg); color: var(--amber);" />
     </div>
     <div class="form-group">
       <label class="form-label">No. Polisi</label>
@@ -358,63 +289,40 @@
         <optgroup label="Large (KPI Unload: 120m)"><option value="Fuso">Fuso</option><option value="Wingbox">Wingbox</option><option value="Tronton">Tronton</option></optgroup>
       </select>
     </div>
+    
     <div class="form-group">
-      <label class="form-label">Origin (Asal Armada)</label>
-      <select class="form-select" id="f-origin">
-        <option value="" disabled selected>Pilih Origin...</option>
-        <option value="SEMARANG (SRG)">SEMARANG (SRG)</option>
-        <option value="BOGOR (BOO)">BOGOR (BOO)</option>
-        <option value="JAKARTA (CGK)">JAKARTA (CGK)</option>
-        <option value="SUMEDANG (SMG)">SUMEDANG (SMG)</option>
-        <option value="BEKASI (BKI)">BEKASI (BKI)</option>
-        <option value="SOREANG (SOR)">SOREANG (SOR)</option>
-        <option value="TASIKMALAYA (TSM)">TASIKMALAYA (TSM)</option>
-        <option value="PURWAKARTA (PWT)">PURWAKARTA (PWT)</option>
-        <option value="SOETA 452 (SOETTA)">SOETA 452 (SOETTA)</option>
-        <option value="CIKARANG (CKR)">CIKARANG (CKR)</option>
-        <option value="TANGERANG (TGR)">TANGERANG (TGR)</option>
-        <option value="SURABAYA (SUB)">SURABAYA (SUB)</option>
-        <option value="KARAWANG (KRW)">KARAWANG (KRW)</option>
-        <option value="WANGON (WGX)">WANGON (WGX)</option>
-        <option value="DEPOK (DPK)">DEPOK (DPK)</option>
-        <option value="YOGYAKARTA (JOG)">YOGYAKARTA (JOG)</option>
-        <option value="SUKABUMI (SMI)">SUKABUMI (SMI)</option>
-        <option value="SOLO (SOLO)">SOLO (SOLO)</option>
-        <option value="CIMAREME (CMM)">CIMAREME (CMM)</option>
-        <option value="MADIUN (MADIUN)">MADIUN (MADIUN)</option>
-        <option value="TANJUNG PINANG (TNJ)">TANJUNG PINANG (TNJ)</option>
-        <option value="TRISINDO">TRISINDO</option>
-        <option value="RODA JAYA">RODA JAYA</option>
-        <option value="MADIUN (MDN)">MADIUN (MDN)</option>
-        <option value="CILACAP (CXP)">CILACAP (CXP)</option>
-        <option value="MAGELANG (MGL)">MAGELANG (MGL)</option>
-        <option value="NARIPAN">NARIPAN</option>
-        <option value="RANCAEKEK (RCK)">RANCAEKEK (RCK)</option>
-        <option value="OTHER">OTHER</option>
-      </select>
+      <label class="form-label" id="label-origin">Origin (Asal Armada)</label>
+      <input type="text" id="f-origin" class="form-input" list="dl-origin" placeholder="Ketik manual atau pilih..." style="text-transform:uppercase" autocomplete="off" />
+      <datalist id="dl-origin"></datalist>
     </div>
     
     <button class="btn btn-primary" onclick="submitArrival()">✅ Catat Kedatangan</button>
+
+    <div id="departure-section" style="display: none; margin-top: 35px; border-top: 1px solid var(--border); padding-top: 20px;">
+      <div class="section-title" style="color: var(--blue);">🚀 Task Keberangkatan</div>
+      <div style="font-size: 13px; color: var(--text2); margin-bottom: 15px;">Daftar armada selesai proses (Siap Berangkat)</div>
+      <div id="sec-departure-list"></div>
+    </div>
   </div>
 </div>
-
+ 
 <div id="view-checker" class="view">
   <div class="mobile-container">
     <div class="view-header">
       <button class="hamburger-inline" onclick="openSidebar()"><i class="fa-solid fa-bars"></i></button>
       <div class="section-title">📋 Panel Checker</div>
     </div>
-    <div style="font-size: 13px; color: var(--text2); margin-bottom: 20px;">Daftar antrian dan unloading armada JNE.</div>
+    <div style="font-size: 13px; color: var(--text2); margin-bottom: 20px;" id="checker-subtitle">Daftar antrian dan operasional armada.</div>
     
     <div class="filter-box">
       <select class="form-select" id="filter-status" onchange="updateCheckerFilter()">
         <option value="all">🚦 Semua Task</option>
-        <option value="queuing">🔄 Mulai Unloading (Antri)</option>
-        <option value="unloading">✅ Selesai Unloading (Proses)</option>
+        <option value="queuing" id="opt-queuing">🔄 Mulai Unloading (Antri)</option>
+        <option value="unloading" id="opt-unloading">✅ Selesai Unloading (Proses)</option>
       </select>
     </div>
-    <div class="form-group" style="margin-bottom: 20px;">
-      <input type="text" class="form-input" id="search-fleet" placeholder="🔍 Cari Nopol, Supir, atau Checker..." onkeyup="updateCheckerFilter()" />
+    <div class="form-group" style="margin-bottom: 20px; margin-top: 10px;">
+      <input type="text" class="form-input" id="search-fleet" placeholder="🔍 Cari Nopol, Supir..." onkeyup="updateCheckerFilter()" />
       <span class="mic-icon" onclick="startDictation('search-fleet', this)">
         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line></svg>
       </span>
@@ -422,8 +330,8 @@
     <div id="ck-list" style="flex: 1;"></div>
   </div>
 </div>
-
-<div id="view-tv" class="view active">
+ 
+<div id="view-tv" class="view">
   <div class="tv-wrap">
     <div class="tv-header">
       <div class="tv-branding">
@@ -431,7 +339,7 @@
         <img src="logo-nadi.png" alt="NADI Logo" style="height: 40px; border-radius: 4px;"> 
         <div>
           <div class="tv-main-title">DB-NADI BDO</div>
-          <div class="tv-subtitle">Antrian & Unloading - Real Time</div>
+          <div class="tv-subtitle" id="tv-header-sub">Antrian & Unloading - Real Time</div>
         </div>
       </div>
       <div class="tv-clock-wrap">
@@ -439,17 +347,17 @@
         <div class="tv-clock-date" id="tv-date">-- --- ----</div>
       </div>
     </div>
-
+ 
     <div class="kpi-row">
       <div class="kpi-card kc-total"><div class="kpi-card-label">Total Armada Aktif</div><div class="kpi-card-val" id="kc-total" style="color:var(--text)">0</div></div>
-      <div class="kpi-card kc-queuing"><div class="kpi-card-label">⏳ Menunggu Unload</div><div class="kpi-card-val" id="kc-queuing" style="color:var(--blue)">0</div></div>
-      <div class="kpi-card kc-unloading"><div class="kpi-card-label">🔄 Sedang Unload</div><div class="kpi-card-val" id="kc-unloading" style="color:var(--amber)">0</div></div>
+      <div class="kpi-card kc-queuing"><div class="kpi-card-label" id="lbl-queuing">⏳ Menunggu Unload</div><div class="kpi-card-val" id="kc-queuing" style="color:var(--blue)">0</div></div>
+      <div class="kpi-card kc-unloading"><div class="kpi-card-label" id="lbl-unloading">🔄 Sedang Unload</div><div class="kpi-card-val" id="kc-unloading" style="color:var(--amber)">0</div></div>
       <div class="kpi-card kc-violations"><div class="kpi-card-label">🔴 Alarm / Overdue</div><div class="kpi-card-val" id="kc-violations" style="color:var(--red)">0</div></div>
     </div>
-
+ 
     <div class="table-container">
       <div class="table-header-custom">
-        <div class="table-title">DAFTAR ARMADA</div>
+        <div class="table-title">DAFTAR ARMADA <span id="tbl-lokasi" style="color:#fff; font-size:14px; margin-left: 10px;"></span></div>
         <div class="live-kpi-indicators">
           <div class="kpi-alert-box">Lewat KPI: <span id="ind-lewat-kpi" style="margin-left: 4px;">0</span></div>
           <div class="live-dot">LIVE</div>
@@ -464,16 +372,16 @@
               <th onclick="sortTable(2)">Armada </th>
               <th onclick="sortTable(3)">Status </th>
               <th onclick="sortTable(4)">KPI Antrian (Max 180m) </th>
-              <th onclick="sortTable(5)">KPI Unloading </th>
-            </tr>
-          </thead>
+              <th onclick="sortTable(5)" id="th-kpi-proses">KPI Unloading </th>
+           </tr>
+         </thead>
           <tbody id="tv-tbody"></tbody>
         </table>
       </div>
     </div>
   </div>
 </div>
-
+ 
 <div id="view-armada" class="view">
   <div class="tv-wrap">
     <div class="tv-header" style="border-bottom: none;">
@@ -481,76 +389,87 @@
         <button class="hamburger-inline" onclick="openSidebar()" style="margin-right: 5px;"><i class="fa-solid fa-bars"></i></button>
         <div>
           <div class="tv-main-title">ANALITIK ARMADA</div>
-          <div class="tv-subtitle">Evaluasi Performa & SLA Terpadu</div>
+          <div class="tv-subtitle">Evaluasi Performa & SLA Terpadu (Interaktif)</div>
         </div>
       </div>
     </div>
-
+ 
     <div class="skeuo-card ai-box" style="margin-bottom: 25px;">
       <div class="chart-title"><i class="fa-solid fa-robot text-glow"></i> AI Insight & Evaluasi Operasional</div>
       <div id="ai-insight-text" style="font-size: 14px; color: var(--text); line-height: 1.6;">
         Memuat analisa matematis dari spreadsheet...
       </div>
     </div>
-
+ 
     <div class="skeuo-card" style="margin-bottom: 25px;">
       <div class="chart-title"><i class="fa-solid fa-filter" style="color: var(--text2);"></i> Filter Evaluasi Terintegrasi</div>
-      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 15px; margin-bottom: 20px;">
-        <div>
+      
+      <div style="display: flex; flex-wrap: wrap; gap: 15px; margin-bottom: 20px; align-items: flex-end;">
+        <div style="flex: 1; min-width: 140px;">
           <label class="form-label">Tanggal Mulai</label>
           <input type="date" id="filter-start" class="skeuo-input" onchange="processAnalitik()">
         </div>
-        <div>
+        <div style="flex: 1; min-width: 140px;">
           <label class="form-label">Tanggal Akhir</label>
           <input type="date" id="filter-end" class="skeuo-input" onchange="processAnalitik()">
         </div>
-        <div>
+        
+        <div style="flex: 1; min-width: 140px;">
+          <label class="form-label">Lokasi Kerja</label>
+          <select id="filter-lokasi-analitik" class="skeuo-input" onchange="processAnalitik()">
+            <option value="all">Semua Lokasi</option>
+         </select>
+        </div>
+ 
+        <div style="flex: 1; min-width: 140px;">
           <label class="form-label">Origin Armada</label>
           <select id="filter-origin-analitik" class="skeuo-input" onchange="processAnalitik()">
             <option value="all">Semua Origin</option>
           </select>
         </div>
-        <div>
+        <div style="flex: 1; min-width: 140px;">
           <label class="form-label">Jenis Kendaraan</label>
           <select id="filter-type-analitik" class="skeuo-input" onchange="processAnalitik()">
             <option value="all">Semua Jenis</option>
-          </select>
+         </select>
         </div>
-        <div>
+        <div style="flex: 1; min-width: 140px;">
           <label class="form-label">Size Armada</label>
           <select id="filter-size-analitik" class="skeuo-input" onchange="processAnalitik()">
             <option value="all">Semua Size</option>
-          </select>
+         </select>
         </div>
-        <div>
+        <div style="flex: 1; min-width: 140px;">
           <label class="form-label">Nama Checker</label>
           <select id="filter-checker-analitik" class="skeuo-input" onchange="processAnalitik()">
             <option value="all">Semua Checker</option>
-          </select>
+         </select>
         </div>
       </div>
-      <div style="text-align: right; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 15px;">
+      
+      <div style="display: flex; justify-content: flex-end; gap: 10px; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 15px;">
+        <button class="skeuo-btn btn-outline" onclick="resetAnalitikFilters()"><i class="fa-solid fa-rotate-left"></i> Reset Filter</button>
         <button class="skeuo-btn btn-primary" onclick="downloadFilteredData()"><i class="fa fa-download"></i> Ekspor CSV Sesuai Filter</button>
       </div>
     </div>
-
+ 
     <div class="chart-grid">
       <div class="skeuo-card chart-card">
         <div class="chart-title">Rasio Pelanggaran SLA / KPI</div>
         <canvas id="chartKPI"></canvas>
       </div>
       <div class="skeuo-card chart-card">
-        <div class="chart-title">Top 5 Volume Origin</div>
+        <div class="chart-title">Top 5 Volume Origin <span style="font-size:10px; color:var(--text2);">(Klik Bar untuk filter)</span></div>
         <canvas id="chartOrigin"></canvas>
       </div>
       <div class="skeuo-card chart-card" style="grid-column: 1 / -1;">
-        <div class="chart-title">Kinerja Checker (Rata-Rata Waktu Unload)</div>
+        <div class="chart-title">Kinerja Checker (Rata-Rata Waktu Proses) <span style="font-size:10px; color:var(--text2);">(Klik Bar untuk filter)</span></div>
         <canvas id="chartChecker"></canvas>
       </div>
     </div>
   </div>
 </div>
-
+ 
 <div id="view-ai" class="view">
   <div class="mobile-container">
     <div class="view-header">
@@ -558,7 +477,7 @@
       <div class="section-title"><i class="fa-solid fa-robot text-glow"></i> Asisten AI NADI</div>
     </div>
     <div style="font-size: 13px; color: var(--text2); margin-bottom: 20px;">Ngobrol, cari solusi operasional, atau unggah data Excel/Word/Foto untuk dianalisa.</div>
-
+ 
     <div class="skeuo-card" style="margin-bottom: 20px;">
       <div class="form-label">Upload Master Data AI (Excel/Word/Foto)</div>
       <div style="display: flex; gap: 10px; align-items: center; margin-top: 5px;">
@@ -567,7 +486,7 @@
       </div>
       <div id="ai-memory-status" style="font-size:11px; margin-top:8px; color:var(--text2); font-family: 'IBM Plex Mono', monospace;">Memori AI: Aktif (0 KB Knowledge)</div>
     </div>
-
+ 
     <div class="skeuo-card" style="display: flex; flex-direction: column; flex: 1; min-height: 50vh; margin-bottom: 10px;">
       
       <div id="ai-chat-box" style="flex: 1; overflow-y: auto; padding: 10px; display:flex; flex-direction: column; gap:12px; margin-bottom: 10px; border: 1px solid rgba(255,255,255,0.05); border-radius: 8px; background: rgba(0,0,0,0.1);">
@@ -579,71 +498,72 @@
       <div style="display: flex; gap: 8px; align-items: center; position: relative;">
         <button class="skeuo-btn btn-outline" onclick="document.getElementById('ai-chat-upload').click()" style="padding: 0 16px; border-radius: 50%; height: 44px; display: flex; align-items: center; justify-content: center;" title="Lampirkan File">
           <i class="fa-solid fa-paperclip"></i>
-        </button>
+       </button>
         <input type="file" id="ai-chat-upload" style="display: none;" accept=".txt,.csv,.json,.xlsx,.xls,.docx,.doc,.jpg,.jpeg,.png" onchange="processSmartUpload('ai-chat-upload')" />
         
         <input type="text" id="ai-chat-input" class="skeuo-input" placeholder="Tanya AI atau ketik pesan..." onkeypress="if(event.key === 'Enter') sendAIChat()" style="flex: 1; height: 44px;" />
         
         <button class="skeuo-btn btn-primary" onclick="sendAIChat()" style="padding: 0 20px; height: 44px; display: flex; align-items: center; justify-content: center;">
           <i class="fa-solid fa-paper-plane"></i>
-        </button>
+       </button>
       </div>
-
+ 
     </div>
   </div>
 </div>
-
+ 
 <div class="toast" id="toast"></div>
-
+ 
 <div class="modal-overlay" id="modalAbout">
   <div class="modal-box">
     <span class="modal-close" onclick="closeModal('modalAbout')">✖</span>
     <div class="modal-title">About DB-NADI</div>
     <div class="modal-box-body modal-body">
-      <p><b>DB-NADI (Dashboard NADI)</b> adalah sistem monitoring terpadu antrian dan operasional bongkar muat secara Real-Time.</p><br>
-      <p><b>Versi Sistem:</b><br>
+     <p><b>DB-NADI (Dashboard NADI)</b> adalah sistem monitoring terpadu antrian dan operasional bongkar muat secara Real-Time.</p><br>
+     <p><b>Versi Sistem:</b><br>
       - v1.0: Inisialisasi awal UI Mobile.<br>
       - v1.1: Integrasi Backend Google Sheets & Auto Timer.<br>
       - v1.2: Integrasi Validasi Foto.<br>
       - v1.3: Fitur Audio-to-Text, Geolocation, Export Data, & Modul Pencarian Global.<br>
-      - v2.1.0 (Terupdate): Locked TV Mode on Refresh, Clean Mobile UI, Burger Integration.</p><br>
+      - v2.1.0: Locked TV Mode on Refresh, Clean Mobile UI, Burger Integration.<br>
+      - v3.0 (Terbaru): Dukungan Multi-Lokasi, Integrasi AI Lanjutan, Alarm Progresif, Backend Authentication.</p><br>
     </div>
   </div>
 </div>
-
+ 
 <div class="modal-overlay" id="modalHelpCenter">
   <div class="modal-box">
     <span class="modal-close" onclick="closeModal('modalHelpCenter')">✖</span>
     <div class="modal-title">Help Center</div>
     <div class="modal-body">
-      <p><b>Cara Menggunakan DB-NADI:</b></p>
+     <p><b>Cara Menggunakan DB-NADI:</b></p>
       <ul style="padding-left: 20px; margin-top: 10px; margin-bottom: 10px;">
-        <li><b>Security:</b> Input kedatangan armada beserta kota asal (Origin).</li>
-        <li><b>Checker:</b> Monitoring tugas bongkar muat di handphone lapangan.</li>
-        <li><b>TV Dashboard:</b> Otomatis terkunci sebagai tampilan utama saat halaman di-refresh.</li>
+       <li><b>Security:</b> Input kedatangan armada beserta kota asal (Origin).</li>
+       <li><b>Checker:</b> Monitoring tugas bongkar muat di handphone lapangan.</li>
+       <li><b>TV Dashboard:</b> Otomatis terkunci sebagai tampilan utama saat halaman di-refresh.</li>
       </ul>
     </div>
   </div>
 </div>
-
+ 
 <div class="modal-overlay" id="modalCreator">
   <div class="modal-box">
     <span class="modal-close" onclick="closeModal('modalCreator')">✖</span>
     <div class="modal-title">👤 Profil Kreator</div>
     <div class="modal-body" style="text-align: center;">
       <div style="background: var(--surface2); width: 80px; height: 80px; border-radius: 50%; margin: 0 auto 15px; display: flex; align-items: center; justify-content: center; font-size: 32px; border: 2px solid var(--amber);">
-         👨‍💻
+          👨‍💻
       </div>
       <h3 style="font-family: 'Rajdhani', sans-serif; font-size: 22px; color: var(--text); margin-bottom: 5px;">Achmad Taufik</h3>
       <p style="font-size: 14px; color: var(--amber); font-weight: 600; margin-bottom: 15px;">Performance Analyst Officer</p>
       <p style="font-size: 13px; color: var(--text2); margin-bottom: 20px;">Kreator db-NADI</p>
-
+ 
       <div style="text-align: left; background: rgba(0,0,0,0.1); padding: 15px; border-radius: 10px; margin-bottom: 20px;">
         <p style="margin-bottom: 8px;">📧 <a href="mailto:atte.achmad@gmail.com" style="color: var(--blue);">atte.achmad@gmail.com</a></p>
         <p style="margin-bottom: 8px;">📞 0857-7930-0030</p>
         <p>💬 <a href="https://wa.me/6285779300030" target="_blank" style="color: #25D366; text-decoration: none; font-weight: bold;"><i class="fa-brands fa-whatsapp"></i> Chat via WhatsApp</a></p>
       </div>
-
+ 
       <div style="text-align: left;">
         <h4 style="font-family: 'Rajdhani', sans-serif; color: var(--amber); border-bottom: 1px solid var(--border); padding-bottom: 5px; margin-bottom: 10px;">Tentang Proyek</h4>
         <p style="font-size: 13px; line-height: 1.6;"><b>db-NADI</b> dikembangkan sebagai solusi cerdas berbasis data untuk mengoptimalkan proses monitoring armada di lapangan secara komprehensif. Dengan mengintegrasikan sistem real-time, validasi geolokasi, dan analitik AI, aplikasi ini bertujuan untuk menekan waktu tunggu SLA, mendeteksi hambatan operasional, serta meningkatkan efisiensi dan produktivitas tim operasional dari pintu kedatangan (gate) hingga proses bongkar muat (dock).</p>
@@ -651,432 +571,205 @@
     </div>
   </div>
 </div>
-
+ 
 <script>
-function openSidebar() {
-  document.getElementById('sidebar').classList.add('open');
-  document.getElementById('sidebarOverlay').classList.add('show');
-}
-function closeSidebar() {
-  document.getElementById('sidebar').classList.remove('open');
-  document.getElementById('sidebarOverlay').classList.remove('show');
-}
-
-document.querySelectorAll('.toggle-submenu').forEach(btn => {
-  btn.addEventListener('click', function(e) {
-    e.preventDefault();
-    const li = this.parentElement;
-    const submenu = li.querySelector('.submenu');
-    
-    document.querySelectorAll('.has-submenu.open').forEach(el => {
-      if(el !== li) {
-        el.classList.remove('open');
-        el.querySelector('.submenu').style.maxHeight = null;
-      }
-    });
-
-    li.classList.toggle('open');
-    if (li.classList.contains('open')) {
-      submenu.style.maxHeight = submenu.scrollHeight + "px";
-    } else {
-      submenu.style.maxHeight = null;
-    }
-  });
-});
-
-function toggleTheme() {
-  const isDark = document.getElementById('theme-switch').checked;
-  document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
-  if(typeof renderCharts === 'function') renderCharts();
-}
-
-// ==== VARIABEL GLOBAL & FUNGSI ANALITIK ARMADA ====
-let chartKPI, chartOrigin, chartChecker;
-let currentFilteredData = [];
-
-function renderCharts() { 
-  processAnalitik(); 
-}
-
-function populateFilters() {
-  if(!rawSpreadsheetData || rawSpreadsheetData.length === 0) return;
-  const origins = new Set(), types = new Set(), sizes = new Set(), checkers = new Set();
-
-  rawSpreadsheetData.forEach(r => {
-    if(r.origin) origins.add(r.origin);
-    if(r.type) types.add(r.type);
-    if(r.size) sizes.add(r.size);
-    if(r.checkername) checkers.add(r.checkername);
-  });
-
-  const fillSelect = (id, set) => {
-    const el = document.getElementById(id);
-    if(!el) return;
-    const firstOpt = el.options[0].outerHTML; 
-    el.innerHTML = firstOpt + Array.from(set).map(item => `<option value="${item}">${item}</option>`).join('');
-  };
-
-  fillSelect('filter-origin-analitik', origins);
-  fillSelect('filter-type-analitik', types);
-  fillSelect('filter-size-analitik', sizes);
-  fillSelect('filter-checker-analitik', checkers);
-}
-
-function processAnalitik() {
-  if(!rawSpreadsheetData) return;
-  
-  const start = document.getElementById('filter-start').value;
-  const end = document.getElementById('filter-end').value;
-  const origin = document.getElementById('filter-origin-analitik').value;
-  const type = document.getElementById('filter-type-analitik').value;
-  const size = document.getElementById('filter-size-analitik').value;
-  const checker = document.getElementById('filter-checker-analitik').value;
-
-  currentFilteredData = rawSpreadsheetData.filter(row => {
-    if(start && row.arrivaltime) { if(new Date(row.arrivaltime) < new Date(start)) return false; }
-    if(end && row.arrivaltime) {
-      const endDate = new Date(end); endDate.setHours(23,59,59,999);
-      if(new Date(row.arrivaltime) > endDate) return false;
-    }
-    if(origin !== 'all' && row.origin !== origin) return false;
-    if(type !== 'all' && row.type !== type) return false;
-    if(size !== 'all' && row.size !== size) return false;
-    if(checker !== 'all' && row.checkername !== checker) return false;
-    return true;
-  });
-
-  generateAI(currentFilteredData);
-  updateAnalitikCharts(currentFilteredData);
-}
-
-function generateAI(data) {
-  const box = document.getElementById('ai-insight-text');
-  if(!data || data.length === 0) {
-    box.innerHTML = "Tidak ada data pada rentang waktu atau filter yang Anda pilih.";
-    return;
-  }
-
-  let total = data.length;
-  let kpiViolations = 0;
-  let totalQueueTime = 0, totalUnloadTime = 0;
-  let checkerStats = {};
-  let worstAnomalies = [];
-
-  data.forEach(r => {
-    let qDur = r.arrivaltime && r.unloadstart ? Math.max(0, Math.floor((new Date(r.unloadstart) - new Date(r.arrivaltime)) / 60000)) : 0;
-    let uDur = r.unloadstart && r.unloadend ? Math.max(0, Math.floor((new Date(r.unloadend) - new Date(r.unloadstart)) / 60000)) : 0;
-    
-    totalQueueTime += qDur;
-    totalUnloadTime += uDur;
-
-    let isViolated = false;
-    if(qDur > KPI_QUEUE) { 
-      isViolated = true; 
-      worstAnomalies.push(`Antrian Overdue (${qDur}m) dari origin ${r.origin || '-'}`); 
-    }
-    if(r.size && uDur > (KPI_UNLOAD[r.size] || 60)) { isViolated = true; }
-    if(isViolated) kpiViolations++;
-
-    if(r.checkername) {
-      if(!checkerStats[r.checkername]) checkerStats[r.checkername] = { count: 0, time: 0 };
-      checkerStats[r.checkername].count++;
-      checkerStats[r.checkername].time += uDur;
-    }
-  });
-
-  let violationRate = Math.round((kpiViolations / total) * 100);
-  let avgQueue = Math.round(totalQueueTime / total);
-  
-  let worstChecker = ""; let maxAvgTime = 0;
-  for(let c in checkerStats) {
-    let avgT = checkerStats[c].time / checkerStats[c].count;
-    if(avgT > maxAvgTime && checkerStats[c].count > 1) { maxAvgTime = avgT; worstChecker = c; }
-  }
-
-  let reco = '<b style="color: var(--green);">🟢 Operasional Berjalan Optimal.</b> Tidak ada kendala mencolok.';
-  if(violationRate > 20) {
-    reco = `<b style="color: var(--red);">🔴 Tingkat Pelanggaran Tinggi (>20%).</b> Anomali Proses Ditemukan!<br>Rekomendasi: Tambah alokasi personil lapangan atau evaluasi alur kerja gate-to-dock.`;
-  } else if(avgQueue > 60) {
-    reco = `<b style="color: var(--yellow);">🟡 Rata-rata Waktu Antri Tinggi (${avgQueue}m).</b><br>Rekomendasi: Percepat administrasi dari tim Security ke Checker.`;
-  }
-
-  let insightHtml = `
-    <b>📊 Kesimpulan Matematis:</b><br>
-    • Total Volume Diproses: <b>${total} Armada</b><br>
-    • Rasio Pelanggaran SLA: <b>${violationRate}%</b> (${kpiViolations} armada melewati KPI)<br>
-    • Rata-rata Durasi Antrian (Kedatangan - Unload): <b>${avgQueue} menit</b><br>
-  `;
-  
-  if(worstChecker) insightHtml += `• Evaluasi Personil: Waktu proses terlama tercatat pada <b>${worstChecker}</b> dengan rata-rata <b>${Math.round(maxAvgTime)} menit/armada</b>.<br>`;
-  
-  insightHtml += `<br>${reco}`;
-  box.innerHTML = insightHtml;
-}
-
-function updateAnalitikCharts(data) {
-  const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
-  const textColor = isDark ? '#e2eaf5' : '#4b5563';
-  const gridColor = isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)';
-
-  Chart.defaults.color = textColor;
-  Chart.defaults.font.family = "'Nunito', sans-serif";
-
-  let kpiOk = 0, kpiFail = 0;
-  let originCounts = {};
-  let checkerStats = {};
-
-  data.forEach(r => {
-    let qDur = r.arrivaltime && r.unloadstart ? elapsed(r.arrivaltime, r.unloadstart) : 0;
-    let uDur = r.unloadstart && r.unloadend ? elapsed(r.unloadstart, r.unloadend) : 0;
-    
-    let isFail = false;
-    if(qDur > KPI_QUEUE) isFail = true;
-    if(r.size && uDur > (KPI_UNLOAD[r.size] || 60)) isFail = true;
-    
-    if(isFail) kpiFail++; else kpiOk++;
-    if(r.origin) originCounts[r.origin] = (originCounts[r.origin] || 0) + 1;
-    if(r.checkername) {
-      if(!checkerStats[r.checkername]) checkerStats[r.checkername] = { sum:0, count:0 };
-      checkerStats[r.checkername].sum += uDur;
-      checkerStats[r.checkername].count++;
-    }
-  });
-
-  const ctxKPI = document.getElementById('chartKPI');
-  if(ctxKPI) {
-    if(chartKPI) chartKPI.destroy();
-    chartKPI = new Chart(ctxKPI, {
-      type: 'doughnut',
-      data: {
-        labels: ['Sesuai SLA', 'Pelanggaran KPI'],
-        datasets: [{ data: [kpiOk, kpiFail], backgroundColor: ['#10b981', '#ef4444'], borderWidth: 0, hoverOffset: 4 }]
-      },
-      options: { responsive: true, cutout: '70%', plugins: { legend: { position: 'bottom' } } }
-    });
-  }
-
-  const ctxOrigin = document.getElementById('chartOrigin');
-  if(ctxOrigin) {
-    if(chartOrigin) chartOrigin.destroy();
-    let oKeys = Object.keys(originCounts).sort((a,b)=>originCounts[b]-originCounts[a]).slice(0,5);
-    let oVals = oKeys.map(k=>originCounts[k]);
-    chartOrigin = new Chart(ctxOrigin, {
-      type: 'bar',
-      data: {
-        labels: oKeys,
-        datasets: [{ label: 'Total Armada (Volume)', data: oVals, backgroundColor: '#38bdf8', borderRadius: 4 }]
-      },
-      options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { grid: { color: gridColor } }, x: { grid: { color: gridColor } } } }
-    });
-  }
-
-  const ctxChecker = document.getElementById('chartChecker');
-  if(ctxChecker) {
-    if(chartChecker) chartChecker.destroy();
-    let cKeys = Object.keys(checkerStats);
-    let cVals = cKeys.map(k => Math.round(checkerStats[k].sum / checkerStats[k].count));
-    chartChecker = new Chart(ctxChecker, {
-      type: 'bar',
-      data: {
-        labels: cKeys,
-        datasets: [{ label: 'Waktu Unloading Rata-Rata (Menit)', data: cVals, backgroundColor: '#f59e0b', borderRadius: 4 }]
-      },
-      options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { grid: { color: gridColor } }, x: { grid: { color: gridColor } } } }
-    });
-  }
-}
-
-function downloadFilteredData() {
-  if(!currentFilteredData || currentFilteredData.length === 0) { 
-    toast("Tidak ada data untuk diekspor pada filter ini.", "err"); return; 
-  }
-  const allColumns = [];
-  currentFilteredData.forEach(row => {
-    Object.keys(row).forEach(key => { if(!allColumns.includes(key)) allColumns.push(key); });
-  });
-
-  let csvContent = allColumns.join(",") + "\n";
-  currentFilteredData.forEach(row => {
-    let rowValues = allColumns.map(colName => {
-      let cellData = (row[colName] === undefined || row[colName] === null) ? "" : row[colName];
-      if (typeof cellData === 'string') {
-        cellData = cellData.replace(/"/g, '""');
-        if (cellData.includes(",") || cellData.includes("\n") || cellData.includes('"')) { cellData = `"${cellData}"`; }
-      }
-      return cellData;
-    });
-    csvContent += rowValues.join(",") + "\n";
-  });
-
-  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.setAttribute("href", url);
-  link.setAttribute("download", `DB_NADI_Report_${new Date().toISOString().slice(0,10)}.csv`);
-  document.body.appendChild(link); link.click(); document.body.removeChild(link);
-  toast("✅ Data Berhasil Diunduh (Berdasarkan Filter).");
-}
-// ==================================================
-
-// ==== FUNGSI FITUR AI ASSISTANT CERDAS (UNIVERSAL) ====
-let aiKnowledgeBase = "";
-
-function saveToKnowledgeBase(filename, textData) {
-  let cleanText = textData.replace(/(\r\n|\n|\r)/gm, " ").replace(/\s+/g, " ").trim();
-  aiKnowledgeBase += `\n[File: ${filename}] Isi Data: ${cleanText}`;
-  const sizeKB = Math.round(aiKnowledgeBase.length / 1024);
-  document.getElementById('ai-memory-status').textContent = `Memori AI: Aktif (${sizeKB} KB Knowledge)`;
-}
-
-async function processSmartUpload(inputId) {
-  const fileInput = document.getElementById(inputId);
-  const file = fileInput.files[0];
-  if(!file) return;
-
-  const ext = file.name.split('.').pop().toLowerCase();
-  appendAIChat("User", `<i>📎 Melampirkan File: <b>${file.name}</b></i>`);
-  toast("⏳ AI NADI sedang memproses dokumen...");
-
-  if (['jpg', 'jpeg', 'png'].includes(ext) || file.type.startsWith('image/')) {
-    appendAIChat("AI", "Saya sedang memindai tulisan di gambar tersebut. Mohon tunggu sebentar ya... 🔍");
-    const reader = new FileReader();
-    reader.onload = function() {
-      Tesseract.recognize(reader.result, 'ind', { logger: m => console.log(m) })
-        .then(({ data: { text } }) => {
-          if(text.trim().length < 2) {
-            appendAIChat("AI", "Hmm, teks di gambarnya kurang jelas atau tidak terbaca. Boleh coba foto yang lebih terang? 😅");
-            return;
-          }
-          saveToKnowledgeBase(file.name, text);
-          appendAIChat("AI", `✅ Gambar <b>${file.name}</b> berhasil saya baca dan rekam. Mau saya simpulkan isinya atau mencari info spesifik dari foto itu?`);
-        })
-        .catch(err => { toast("❌ Gagal memproses OCR Gambar", "err"); });
-    };
-    reader.readAsDataURL(file);
-  } 
-  else if (['xlsx', 'xls', 'csv'].includes(ext)) {
-    const reader = new FileReader();
-    reader.onload = function(e) {
-      const data = new Uint8Array(e.target.result);
-      const workbook = XLSX.read(data, {type: 'array'});
-      const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-      const rawTextData = XLSX.utils.sheet_to_csv(firstSheet);
-      
-      saveToKnowledgeBase(file.name, rawTextData);
-      appendAIChat("AI", `✅ Mantap! Data spreadsheet <b>${file.name}</b> berhasil saya ekstrak ke memori. Sekarang tanyakan saja apa yang ingin dianalisa dari file Excel tersebut. 📊`);
-    };
-    reader.readAsArrayBuffer(file);
-  } 
-  else {
-    const reader = new FileReader();
-    reader.onload = function(e) {
-      saveToKnowledgeBase(file.name, e.target.result);
-      appendAIChat("AI", `✅ Dokumen teks/Word <b>${file.name}</b> berhasil saya pahami. Mari kita bahas instruksi di dalamnya!`);
-    };
-    reader.readAsText(file);
-  }
-
-  fileInput.value = "";
-}
-
-function appendAIChat(sender, msg) {
-  const box = document.getElementById('ai-chat-box');
-  const isUser = sender === 'User';
-  const align = isUser ? 'align-self: flex-end; background: var(--amber-dim); border-right: 3px solid var(--amber); color: var(--amber);' : 'align-self: flex-start; background: rgba(56,189,248,0.1); border-left: 3px solid var(--blue); color: var(--text);';
-  const name = isUser ? '👤 Anda' : '🤖 AI NADI';
-  
-  const html = `<div style="padding: 10px 14px; border-radius: 12px; max-width: 85%; font-size: 13px; line-height: 1.5; ${align}"><b>${name}:</b><br>${msg}</div>`;
-  box.innerHTML += html;
-  box.scrollTop = box.scrollHeight;
-}
-
-function sendAIChat() {
-  const input = document.getElementById('ai-chat-input');
-  const val = input.value.trim();
-  if(!val) return;
-  
-  appendAIChat("User", val);
-  input.value = "";
-
-  setTimeout(() => {
-    let response = "";
-    const lowerVal = val.toLowerCase();
-
-    const greetings = ['halo', 'hai', 'pagi', 'siang', 'sore', 'malam', 'assalamualaikum'];
-    const praises = ['mantap', 'keren', 'bagus', 'ok', 'oke', 'baik', 'sip', 'terima kasih', 'makasih', 'thanks'];
-    const questionsAboutAI = ['siapa kamu', 'tentang ai', 'bisa apa saja', 'namamu siapa'];
-
-    if (greetings.some(g => lowerVal.includes(g)) && lowerVal.length < 25) {
-        response = "Halo! Senang bisa ngobrol dengan Anda. Saya AI NADI, siap membantu urusan analisa SLA armada atau merekap dokumen Anda. Ada yang bisa saya bantu sekarang?";
-    } 
-    else if (praises.some(p => lowerVal.includes(p)) && lowerVal.length < 25) {
-        response = "Sama-sama! Selalu semangat untuk kelancaran operasional kita. Jangan ragu nanya lagi kalau butuh sesuatu ya! 🚀";
-    }
-    else if (questionsAboutAI.some(q => lowerVal.includes(q))) {
-        response = "Saya adalah <b>Asisten AI NADI</b> (Dashboard Monitoring Armada), dikembangkan oleh <b>Bpk. Achmad Taufik</b>. Saya bertugas membantu Anda menganalisa telatnya *unloading*, merangkum dokumen lapangan, hingga membaca foto SOP. 😊";
-    }
-    else if (lowerVal.includes("sla") || lowerVal.includes("kpi") || lowerVal.includes("telat") || lowerVal.includes("overdue") || lowerVal.includes("lama")) {
-        response = "<b>📊 Solusi Operasional & SLA:</b><br>Menurut standar operasional NADI, batas wajar sebuah armada antri di Gate adalah <b>180 menit</b>.<br><br>💡 <b>Rekomendasi Presisi:</b> Jika alarm merah menyala, segera cek di menu 'Checker'. Alokasikan Checker yang sedang santai ke armada tipe *Large* (Fuso/Wingbox) agar bottleneck tidak merambat ke armada kecil.";
-    }
-    
-    if (aiKnowledgeBase !== "" && !response) {
-        const stopwords = ['dan', 'atau', 'di', 'ke', 'dari', 'yang', 'ini', 'itu', 'tolong', 'cari', 'apa', 'bagaimana'];
-        const keywords = lowerVal.split(" ").filter(w => w.length > 3 && !stopwords.includes(w));
-        
-        if (keywords.length > 0) {
-            const sentences = aiKnowledgeBase.split(/[.?!]/).map(s => s.trim()).filter(s => s.length > 10);
-            
-            let matchedSentences = [];
-            sentences.forEach(sentence => {
-                const sLow = sentence.toLowerCase();
-                let score = 0;
-                keywords.forEach(k => { if(sLow.includes(k)) score++; });
-                if(score > 0) matchedSentences.push({text: sentence, score: score});
-            });
-            
-            if(matchedSentences.length > 0) {
-                matchedSentences.sort((a,b) => b.score - a.score);
-                let bestMatches = matchedSentences.slice(0, 2).map(m => `"${m.text}"`).join("<br><br>• ");
-                response = `<b>💡 Berdasarkan analisa file yang Anda unggah sebelumnya:</b><br><br>• ${bestMatches}<br><br><i>Semoga temuan data di atas menjawab kebingungan Anda. Butuh analisa dari file lainnya?</i>`;
-            }
-        }
-    }
-
-    if (!response) {
-       if (aiKnowledgeBase === "") {
-           response = "Hmm, pertanyaan Anda menarik tapi saya belum punya konteks datanya. Coba <b>lampirkan file Excel / Word / Foto</b> menggunakan ikon klip kertas (📎) di samping kolom ketik ini agar saya bisa analisa dan kasih rekomendasinya! 😉";
-       } else {
-           response = "Saya sudah menelusuri memori dokumen yang Anda upload, tapi sepertinya kata kunci yang Anda tanyakan tidak ditemukan secara pasti di sana. Bisa diperjelas lagi pertanyaannya?";
-       }
-    }
-
-    appendAIChat("AI", response);
-  }, 1000);
-}
-// ==================================================
-
-const API_URL = 'https://script.google.com/macros/s/AKfycbxDdtdla2-hoRDz66czD4TfbYGdaqpw2vi7jecJPaUisfRwUUgf1qGhIol6_VVUlXxT/exec';
-
-const ALLOWED_LOCATIONS = [
-  { lat: -6.9356255322387295, lon: 107.6989397768731, name: "Hub JNE Utama" },
-  { lat: -6.950416631576503, lon: 107.81136000887774, name: "Lokasi Rumah (Test)" },
-  { lat: -6.936258, lon: 107.698784, name: "Lokasi Tambahan 1" },
-  { lat: -6.9504251172266125, lon: 107.81136520908176, name: "Lokasi Tambahan 2" }
-];
-const MAX_RADIUS_METER = 1000;
-
+// ==========================================
+// 1. INISIALISASI VARIABEL
+// ==========================================
+let currentUser = null;
+let currentTerm = 'Unloading'; // Default Terminologi
+ 
+const API_URL = 'https://script.google.com/macros/s/AKfycbxDdtdla2-hoRDz66czD4TfbYGdaqpw2vi7jecJPaUisfRwUUgf1qGhIol6_VVUlXxT/exec'; // <-- PASTE LINK PUBLISH APPS SCRIPT DI SINI!
 const FLEET_SIZES = { small: ['Blandvan','L300'], medium: ['CDD','CDE','CDEL','Truck'], large: ['Fuso','Wingbox','Tronton'] };
 const KPI_UNLOAD = { small:20, medium:60, large:120 }; 
 const KPI_QUEUE  = 180; 
-
+ 
 let fleets = [];
-let rawSpreadsheetData = [];
 let checkerSearchTerm = '';
 let checkerStatusFilter = 'all';
+let currentOscillator = null;
+ 
+let chartKPI, chartOrigin, chartChecker;
+let currentFilteredData = [];
+let aiKnowledgeBase = "";
+ 
+// ==========================================
+// 2. LOGIKA LOGIN & OTENTIKASI
+// ==========================================
+async function handleLogin() {
+  const u = document.getElementById('login-user').value.trim();
+  const p = document.getElementById('login-pass').value.trim();
+  
+  if (!u || !p) {
+    toast('❌ Harap masukkan username berupa NIK & pass nama depan+3 angka akhir NIK', 'err');
+    return;
+  }
+  
+  const btn = document.querySelector('.login-box button');
+  const originalText = btn.innerHTML;
+  btn.innerHTML = 'Memverifikasi...';
+  btn.disabled = true;
 
+  try {
+    const response = await fetch(API_URL, {
+      method: 'POST',
+      body: JSON.stringify({ action: 'login', username: u, pass: p })
+    });
+    const res = await response.json();
+    
+    if (res.status === 'success') {
+      const user = res.user;
+      currentUser = user;
+      document.getElementById('sidebar').style.display = 'flex';
+      document.getElementById('user-location-badge').textContent = user.location;
+      
+      // Dynamic Terminology (Loading vs Unloading)
+      currentTerm = (user.location === 'Soekarno Hatta 452') ? 'Loading' : 'Unloading';
+      applyTerminology();
+      setupOriginDestination(user.location);
+      
+      // Hide/Show Menus based on Role
+      document.getElementById('menu-security').style.display = ['admin', 'spv', 'security'].includes(user.role) ? 'block' : 'none';
+      document.getElementById('menu-checker').style.display = ['admin', 'spv', 'checker'].includes(user.role) ? 'block' : 'none';
+      document.getElementById('menu-tv').style.display = 'block';
+      document.getElementById('menu-armada').style.display = 'block';
+      
+      // Auto-fill names untuk Security
+      if (user.role === 'security') document.getElementById('f-secname').value = user.name;
+      
+      toast(`✅ Selamat datang, ${user.name}!`);
+      
+      if (user.role === 'security') setView('security');
+      else if (user.role === 'checker') setView('checker');
+      else setView('tv');
+      
+      fetchDatabase(); 
+    } else {
+      toast('❌ Username atau Password Salah!', 'err');
+    }
+  } catch(e) {
+    toast('❌ Gagal terhubung ke Server Apps Script', 'err');
+  } finally {
+    btn.innerHTML = originalText;
+    btn.disabled = false;
+  }
+}
+ 
+function setupOriginDestination(location) {
+  const isSoetta = location === 'Soekarno Hatta 452';
+  const label = document.getElementById('label-origin');
+  const dl = document.getElementById('dl-origin');
+  const fOrigin = document.getElementById('f-origin');
+  
+  if(!label || !dl) return;
+ 
+  if (isSoetta) {
+     label.textContent = "DESTINATION (TUJUAN ARMADA)";
+     fOrigin.placeholder = "Pilih / Ketik Tujuan...";
+     const dests = ['BEKASI (BKI)', 'SUKABUMI (SMI)', 'CIKARANG (CKR)', 'BOGOR (BOO)', 'CILACAP (CXP)', 'SEMARANG (SRG)', 'YOGYAKARTA (JOG)', 'SURABAYA GATEWAY (SUX)', 'DEPOK (DPK)', 'CILEGON (CLG)', 'CIREBON (CBN)', 'WANGON (WGX)', 'SURAKARTA (SOC)', 'TANGERANG (TGR)', 'JAKARTA (CGK)', 'KARAWANG (KRW)', 'MAGELANG (MGL)', 'SURABAYA (SUB)', 'TEGAL (TGL)', 'MADIUN (MDN)', 'SIDOARJO (SDA)', 'OTHER'];
+     dl.innerHTML = dests.map(d => `<option value="${d}">`).join('');
+  } else {
+     label.textContent = "ORIGIN (ASAL ARMADA)";
+     fOrigin.placeholder = "Pilih / Ketik Asal...";
+     const origins = ['SEMARANG (SRG)','BOGOR (BOO)','JAKARTA (CGK)','SUMEDANG (SMG)','BEKASI (BKI)','SOREANG (SOR)','TASIKMALAYA (TSM)','PURWAKARTA (PWT)','SOETA 452 (SOETTA)','CIKARANG (CKR)','TANGERANG (TGR)','SURABAYA (SUB)','KARAWANG (KRW)','WANGON (WGX)','DEPOK (DPK)','YOGYAKARTA (JOG)','SUKABUMI (SMI)','SOLO (SOLO)','CIMAREME (CMM)','MADIUN (MADIUN)','TANJUNG PINANG (TNJ)','TRISINDO','RODA JAYA','MADIUN (MDN)','CILACAP (CXP)','MAGELANG (MGL)','NARIPAN','RANCAEKEK (RCK)','OTHER'];
+     dl.innerHTML = origins.map(o => `<option value="${o}">`).join('');
+  }
+}
+ 
+function logout() {
+  currentUser = null;
+  document.getElementById('sidebar').style.display = 'none';
+  document.getElementById('login-user').value = '';
+  document.getElementById('login-pass').value = '';
+  setView('login');
+}
+ 
+function applyTerminology() {
+  const elSubtitle = document.getElementById('checker-subtitle');
+  if(elSubtitle) elSubtitle.textContent = `Daftar antrian dan operasional armada (${currentTerm}).`;
+  
+  const elOptQ = document.getElementById('opt-queuing');
+  if(elOptQ) elOptQ.textContent = `🔄 Mulai ${currentTerm} (Antri)`;
+  
+  const elOptU = document.getElementById('opt-unloading');
+  if(elOptU) elOptU.textContent = `✅ Selesai ${currentTerm} (Proses)`;
+  
+  const elTvHead = document.getElementById('tv-header-sub');
+  if(elTvHead) elTvHead.textContent = `Antrian & ${currentTerm} - Real Time`;
+  
+  const elLblQ = document.getElementById('lbl-queuing');
+  if(elLblQ) elLblQ.textContent = `⏳ Menunggu ${currentTerm}`;
+  
+  const elLblU = document.getElementById('lbl-unloading');
+  if(elLblU) elLblU.textContent = `🔄 Sedang ${currentTerm}`;
+  
+  const elThKpi = document.getElementById('th-kpi-proses');
+  if(elThKpi) elThKpi.textContent = `KPI ${currentTerm}`;
+}
+ 
+// ==========================================
+// 3. FUNGSI JAM, MODAL, DAN SIDEBAR
+// ==========================================
+function tickClock() { 
+  const n = new Date(); 
+  const hh = String(n.getHours()).padStart(2,'0'), mm = String(n.getMinutes()).padStart(2,'0'), ss = String(n.getSeconds()).padStart(2,'0'); 
+  const days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+  const months = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+  
+  if (document.getElementById('tv-time')) document.getElementById('tv-time').textContent = `${hh}:${mm}:${ss}`; 
+  if (document.getElementById('tv-date')) document.getElementById('tv-date').textContent = `${days[n.getDay()]}, ${String(n.getDate()).padStart(2,'0')} ${months[n.getMonth()]} ${n.getFullYear()}`;
+  if (document.getElementById('sec-datetime')) document.getElementById('sec-datetime').textContent = `Waktu Sistem: ${hh}:${mm}`; 
+}
+setInterval(tickClock, 1000); tickClock();
+ 
+function openSidebar() { document.getElementById('sidebar').classList.add('open'); document.getElementById('sidebarOverlay').classList.add('show'); }
+function closeSidebar() { document.getElementById('sidebar').classList.remove('open'); document.getElementById('sidebarOverlay').classList.remove('show'); }
+ 
+document.querySelectorAll('.toggle-submenu').forEach(btn => {
+ btn.addEventListener('click', function(e) {
+   e.preventDefault();
+   const li = this.parentElement;
+   const submenu = li.querySelector('.submenu');
+   
+   document.querySelectorAll('.has-submenu.open').forEach(el => {
+     if(el !== li) {
+       el.classList.remove('open');
+       el.querySelector('.submenu').style.maxHeight = null;
+     }
+   });
+ 
+   li.classList.toggle('open');
+   if (li.classList.contains('open')) {
+     submenu.style.maxHeight = submenu.scrollHeight + "px";
+   } else {
+     submenu.style.maxHeight = null;
+   }
+  });
+});
+ 
+function toggleTheme() {
+  const isDark = document.getElementById('theme-switch').checked;
+  document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
+  if(typeof renderCharts === 'function' && document.getElementById('view-armada').classList.contains('active')) renderCharts();
+}
+ 
 function openModal(id) { document.getElementById(id).style.display = 'flex'; }
 function closeModal(id) { document.getElementById(id).style.display = 'none'; }
-
+function toast(msg, type) { 
+  const el = document.getElementById('toast'); el.textContent = msg; 
+  el.className = `toast toast-${type==='err'?'err':'ok'} show`; 
+  setTimeout(() => el.classList.remove('show'), 3000); 
+}
+ 
+function setView(v) { 
+  document.querySelectorAll('.view').forEach(el => el.classList.remove('active')); 
+  if(document.getElementById(`view-${v}`)) {
+    document.getElementById(`view-${v}`).classList.add('active'); 
+  }
+  if(v === 'armada') renderCharts(); 
+  renderAll(); 
+}
+ 
 function startDictation(inputId, iconEl) {
   if (window.hasOwnProperty('webkitSpeechRecognition') || window.hasOwnProperty('SpeechRecognition')) {
     const SpeechRecognition = window.Windows || window.webkitSpeechRecognition;
@@ -1093,215 +786,277 @@ function startDictation(inputId, iconEl) {
     }
   } else { toast("❌ Browser tidak mendukung Voice-to-Text", "err"); }
 }
-
+ 
+// ==========================================
+// 4. LOGIKA DATA, ALARM & FILTER
+// ==========================================
 function playAlarm(level) {
   try {
+    if (currentOscillator) return; 
     const ctx = new (window.AudioContext || window.webkitAudioContext)();
-    const osc = ctx.createOscillator(); const gain = ctx.createGain();
+    const osc = ctx.createOscillator(); 
+    const gain = ctx.createGain();
     osc.connect(gain); gain.connect(ctx.destination);
-    if(level === 'warning') { 
+    
+    if (level === 'warning') { // Mendekati 10 menit KPI
       osc.frequency.value = 400; gain.gain.setValueAtTime(0.1, ctx.currentTime);
       osc.start(); osc.stop(ctx.currentTime + 0.5);
-    } else { 
+    } else if (level === 'critical') { // Lewat KPI Antri
       osc.frequency.value = 800; osc.type = 'square'; gain.gain.setValueAtTime(0.3, ctx.currentTime);
       osc.start(); osc.stop(ctx.currentTime + 1.0);
+    } else if (level === 'extreme') { // Lewat KPI Unload (Lebih keras/intens)
+      osc.frequency.value = 1000; osc.type = 'sawtooth'; gain.gain.setValueAtTime(0.6, ctx.currentTime);
+      osc.start(); osc.stop(ctx.currentTime + 1.5);
     }
+    
+    currentOscillator = osc;
+    osc.onended = () => { currentOscillator = null; };
   } catch(e) {} 
 }
-
+ 
 function getSize(type) { for (const [sz, arr] of Object.entries(FLEET_SIZES)) { if (arr.includes(type)) return sz; } return 'small'; }
-function elapsed(startIso, endIso) {
-  const end = endIso ? new Date(endIso) : new Date();
-  return Math.max(0, Math.floor((end - new Date(startIso)) / 60000));
-}
+function elapsed(startIso, endIso) { const end = endIso ? new Date(endIso) : new Date(); return Math.max(0, Math.floor((end - new Date(startIso)) / 60000)); }
 function fmtHM(iso) { const d = new Date(iso); return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`; }
-
-function tickClock() { 
-  const n = new Date(); 
-  const hh = String(n.getHours()).padStart(2,'0'), mm = String(n.getMinutes()).padStart(2,'0'), ss = String(n.getSeconds()).padStart(2,'0'); 
-  const days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
-  const months = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
-  if (document.getElementById('tv-time')) document.getElementById('tv-time').textContent = `${hh}:${mm}:${ss}`; 
-  if (document.getElementById('tv-date')) document.getElementById('tv-date').textContent = `${days[n.getDay()]}, ${String(n.getDate()).padStart(2,'0')} ${months[n.getMonth()]} ${n.getFullYear()}`;
-  if (document.getElementById('sec-datetime')) document.getElementById('sec-datetime').textContent = `Waktu Sistem: ${hh}:${mm}`; 
-}
-setInterval(tickClock, 1000); tickClock();
-
-function renderAll() { renderChecker(); renderTV(); }
-
-function setView(v) { 
-  document.querySelectorAll('.view').forEach(el => el.classList.remove('active')); 
-  if(document.getElementById(`view-${v}`)) {
-    document.getElementById(`view-${v}`).classList.add('active'); 
-  }
-  if(v === 'armada') renderCharts(); 
-  renderAll(); 
-}
-
-function toast(msg, type) { 
-  const el = document.getElementById('toast'); el.textContent = msg; 
-  el.className = `toast toast-${type==='err'?'err':'ok'} show`; 
-  setTimeout(() => el.classList.remove('show'), 3000); 
-}
-
-function getDistance(lat1, lon1, lat2, lon2) {
-  const R = 6371000; 
-  const dLat = (lat2 - lat1) * Math.PI / 180;
-  const dLon = (lon2 - lon1) * Math.PI / 180;
-  const a = Math.sin(dLat/2) * Math.sin(dLat/2) + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon/2) * Math.sin(dLon/2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-  return R * c; 
-}
-
-// MODIFIED: Diubah agar mengabaikan batasan geofencing asli sehingga bisa di-input dari mana saja
-function getGPSLocation() {
-  return new Promise((resolve) => {
-    // bypass otomatis untuk keperluan testing di lokasi manapun
-    resolve({ 
-      lat: -6.9504166, 
-      lon: 107.81136, 
-      distance: 0, 
-      locationName: "Bypass (Kondisi Tes)" 
-    });
-  });
-}
-
+ 
 async function fetchDatabase() {
+  if (!currentUser) return; // Jangan fetch data kalau belum login
   try {
     const response = await fetch(API_URL);
     const data = await response.json();
-    rawSpreadsheetData = data;
     fleets = data.map(row => ({
       id: row.id, secName: row.securityname, driverName: row.driver, plateNumber: row.plate, fleetType: row.type, fleetSize: row.size,
-      arrivalTime: row.arrivaltime, checkerName: row.checkername, status: row.status, unloadStartTime: row.unloadstart || null, unloadEndTime: row.unloadend || null, origin: row.origin
+      arrivalTime: row.arrivaltime, checkerName: row.checkername, status: row.status, 
+      unloadStartTime: row.unloadstart || null, unloadEndTime: row.unloadend || null, 
+      origin: row['origin/destination'] || row.origin || row.origindestination, 
+      lokasi: row.lokasi || 'Gedebage', 
+      departureTime: row.departuretime || null
     }));
     
     populateFilters();
-    processAnalitik();
+    if(document.getElementById('view-armada').classList.contains('active')) processAnalitik();
     renderAll();
   } catch (e) { console.error("Koneksi terputus.", e); }
 }
-
+ 
+function getFilteredFleets() {
+  if (!currentUser) return [];
+  if (currentUser.location === 'ALL') return fleets;
+  return fleets.filter(f => f.lokasi === currentUser.location);
+}
+ 
+function renderAll() { renderChecker(); renderTV(); renderSecurityTasks(); }
+ 
+// ==========================================
+// 5. LOGIKA SECURITY & CHECKER
+// ==========================================
 async function submitArrival() {
   const secName = document.getElementById('f-secname').value.trim();
   const driver = document.getElementById('f-driver').value.trim(); 
   const plate = document.getElementById('f-plate').value.trim().toUpperCase(); 
   const type = document.getElementById('f-type').value;
-  const origin = document.getElementById('f-origin').value;
-
-  if (!secName || !driver || !plate || !origin) { toast('❌ Semua kolom wajib diisi (termasuk Origin)!','err'); return; }
+  const origin = document.getElementById('f-origin').value.trim().toUpperCase();
+ 
+  if (!secName || !driver || !plate || !origin) { toast('❌ Semua kolom wajib diisi!','err'); return; }
   
-  toast('⏳ Memverifikasi GPS...');
+  // CEGAH DOUBLE INPUT
+  const isDuplicate = fleets.some(f => f.plateNumber === plate && f.status !== 'done' && f.lokasi === currentUser.location);
+  if(isDuplicate) { 
+    toast('❌ Armada Plat Nomor ini sedang aktif di sistem antrian!', 'err'); 
+    return; 
+  }
+  
+  toast('⏳ Menyimpan...');
   try {
-    const loc = await getGPSLocation();
-    toast('⏳ Menyimpan...');
-    await fetch(API_URL, { method: 'POST', body: JSON.stringify({ action: 'addArrival', id: 'ARR-' + Date.now().toString().slice(-6), securityName: secName, driver: driver, plate: plate, origin: origin, type: type, size: getSize(type), arrivalTime: new Date().toISOString(), gpsLog: `GPS OK (Bypass Mode)` })});
+    await fetch(API_URL, { 
+      method: 'POST', 
+      body: JSON.stringify({ 
+        action: 'addArrival', id: 'ARR-' + Date.now().toString().slice(-6), 
+        securityName: secName, driver: driver, plate: plate, origin: origin, 
+        type: type, size: getSize(type), arrivalTime: new Date().toISOString(), 
+        lokasi: currentUser.location
+      })
+    });
     document.getElementById('f-plate').value = ''; document.getElementById('f-driver').value = ''; document.getElementById('f-origin').value = '';
     await fetchDatabase(); toast('✅ Kedatangan Berhasil Valid!');
   } catch(err) { toast('❌ ' + err, 'err'); }
 }
 
+function renderSecurityTasks() {
+  // Hanya proses jika user adalah security dan lokasinya Soekarno Hatta 452
+  if (!currentUser || currentUser.role !== 'security' || currentUser.location !== 'Soekarno Hatta 452') {
+    const depSec = document.getElementById('departure-section');
+    if (depSec) depSec.style.display = 'none';
+    return;
+  }
+
+  document.getElementById('departure-section').style.display = 'block';
+  const el = document.getElementById('sec-departure-list');
+  if (!el) return;
+
+  // Filter armada yang statusnya sudah selesai loading (done) TAPI belum berangkat
+  const list = getFilteredFleets().filter(f => f.status && f.status.toLowerCase() === 'done' && !f.departureTime);
+
+  if (!list.length) {
+    el.innerHTML = '<div style="text-align:center; padding: 15px; color: var(--text2); background: var(--surface2); border-radius: 8px;">Tidak ada armada siap berangkat.</div>';
+    return;
+  }
+
+  el.innerHTML = list.map(f => {
+    return `<div class="fleet-card" style="border-left-color: var(--blue);">
+              <div class="fleet-card-header">
+                <div>
+                  <div class="fleet-name">${f.plateNumber}</div>
+                  <div class="fleet-meta">${f.fleetType} · Supir: ${f.driverName}</div>
+                </div>
+                <span class="status-badge" style="background: var(--blue-dim); color: var(--blue);">Siap Berangkat</span>
+              </div>
+              <button class="btn btn-outline" style="margin-top:10px; border-color: var(--blue); color: var(--blue); width: 100%;" onclick="submitDeparture('${f.id}')">🚀 Catat Jam Keberangkatan</button>
+            </div>`;
+  }).join('');
+}
+
+async function submitDeparture(id) {
+  toast('⏳ Menyimpan jam keberangkatan...');
+  try {
+    await fetch(API_URL, { 
+      method: 'POST', 
+      body: JSON.stringify({ 
+        action: 'updateDeparture', 
+        id: id, 
+        departureTime: new Date().toISOString() 
+      }) 
+    });
+    await fetchDatabase(); 
+    toast('✅ Keberangkatan Berhasil Dicatat!');
+  } catch(err) { 
+    toast('❌ ' + err, 'err'); 
+  }
+}
+ 
 function updateCheckerFilter() {
   checkerSearchTerm = document.getElementById('search-fleet').value.toLowerCase().trim();
   checkerStatusFilter = document.getElementById('filter-status').value;
   renderChecker();
 }
-
+ 
 function renderChecker() {
   const el = document.getElementById('ck-list'); if(!el) return;
-  let list = fleets.filter(f => f.status && f.status.toLowerCase() !== 'done');
-  if (checkerStatusFilter !== 'all') list = list.filter(f => f.status.toLowerCase() === checkerStatusFilter);
+  let list = getFilteredFleets().filter(f => f.status && f.status.toLowerCase() !== 'done');
   
+  if (checkerStatusFilter !== 'all') list = list.filter(f => f.status.toLowerCase() === checkerStatusFilter);
   if (checkerSearchTerm !== '') {
-    list = list.filter(f => (f.plateNumber && f.plateNumber.toLowerCase().includes(checkerSearchTerm)) || (f.driverName && f.driverName.toLowerCase().includes(checkerSearchTerm)) || (f.checkerName && f.checkerName.toLowerCase().includes(checkerSearchTerm)));
+    list = list.filter(f => (f.plateNumber && f.plateNumber.toLowerCase().includes(checkerSearchTerm)) || (f.driverName && f.driverName.toLowerCase().includes(checkerSearchTerm)));
   }
+  
   if(!list.length) { el.innerHTML = '<div style="text-align:center; padding: 20px; color: var(--text2);">Kosong / Tidak ditemukan.</div>'; return; }
   
   el.innerHTML = list.map(f => {
     let content = ''; const status = f.status.toLowerCase();
     if(status === 'queuing') {
-      content = `<div class="form-group" style="margin-top:10px;"><input type="text" id="cn-${f.id}" class="form-input" placeholder="Nama Anda (Checker)..."></div>
-                 <button class="btn btn-primary" style="margin-top:5px;" onclick="startUnloading('${f.id}')">🔄 MULAI UNLOAD</button>`;
+      content = `<div class="form-group" style="margin-top:10px;"><input type="text" id="cn-${f.id}" class="form-input" value="${currentUser ? currentUser.name : ''}" readonly style="background:var(--bg); color:var(--amber);"></div>
+                 <button class="btn btn-primary" style="margin-top:5px;" onclick="startUnloading('${f.id}')">🔄 MULAI ${currentTerm.toUpperCase()}</button>`;
     } else if(status === 'unloading') {
       content = `<div style="font-size:13px; color:var(--amber); margin: 8px 0;">Checker Aktif: ${f.checkerName || '-'}</div>
-                 <button class="btn btn-success" onclick="finishUnloading('${f.id}')">✅ SELESAI UNLOAD</button>`;
+                 <button class="btn btn-success" onclick="finishUnloading('${f.id}')">✅ SELESAI ${currentTerm.toUpperCase()}</button>`;
     }
     return `<div class="fleet-card"><div class="fleet-card-header"><div><div class="fleet-name">${f.plateNumber}</div><div class="fleet-meta">${f.fleetType} · Supir: ${f.driverName} · Tiba: ${fmtHM(f.arrivalTime)}</div></div><span class="status-badge s-${status}">${status}</span></div>${content}</div>`;
   }).join('');
 }
-
+ 
 async function startUnloading(id) {
   const cName = document.getElementById(`cn-${id}`).value.trim();
-  if(!cName) { toast('❌ Nama Checker wajib diisi!','err'); return; }
-  toast('⏳ Memverifikasi GPS...');
+  toast('⏳ Menyimpan...');
   try {
-    await fetch(API_URL, { method: 'POST', body: JSON.stringify({ action: 'updateStatus', id: id, status: 'unloading', checkerName: cName, startTime: new Date().toISOString(), gpsLog: `GPS OK (Bypass Mode)` }) });
-    await fetchDatabase(); toast('🔄 Unloading Berhasil Dimulai!');
+    await fetch(API_URL, { method: 'POST', body: JSON.stringify({ action: 'updateStatus', id: id, status: 'unloading', checkerName: cName, startTime: new Date().toISOString() }) });
+    await fetchDatabase(); toast(`🔄 ${currentTerm} Berhasil Dimulai!`);
   } catch(err) { toast('❌ ' + err, 'err'); }
 }
-
+ 
 async function finishUnloading(id) {
-  toast('⏳ Memverifikasi GPS...');
+  toast('⏳ Menyimpan...');
   try {
-    await fetch(API_URL, { method: 'POST', body: JSON.stringify({ action: 'updateStatus', id: id, status: 'done', endTime: new Date().toISOString(), gpsLog: `GPS OK (Bypass Mode)` }) });
-    await fetchDatabase(); toast('✅ Unloading Selesai!');
+    await fetch(API_URL, { method: 'POST', body: JSON.stringify({ action: 'updateStatus', id: id, status: 'done', endTime: new Date().toISOString() }) });
+    await fetchDatabase(); toast(`✅ ${currentTerm} Selesai!`);
   } catch(err) { toast('❌ ' + err, 'err'); }
 }
-
+ 
+// ==========================================
+// 6. LOGIKA DASHBOARD TV
+// ==========================================
 function getKPIStatus(elapsedTime, maxTime) {
   const rem = maxTime - elapsedTime;
-  if(rem < 0) return { cls: 'c-red', txt: `Lewat ${Math.abs(rem)}m`, isCrit: 2 };
-  if(rem <= 5) return { cls: 'c-red', txt: `Sisa ${rem}m`, isCrit: 1 };
-  return { cls: 'c-green', txt: `Sisa ${rem}m`, isCrit: 0 };
+  if(rem < 0) return { cls: 'c-red', txt: `Lewat ${Math.abs(rem)}m`, isCrit: 2 }; 
+  if(rem <= 10) return { cls: 'c-yellow', txt: `Sisa ${rem}m`, isCrit: 1 }; 
+  return { cls: 'c-green', txt: `Sisa ${rem}m`, isCrit: 0 }; 
 }
-
+ 
 function renderTV() {
   const tbody = document.getElementById('tv-tbody'); if (!tbody) return;
-  const activeFleets = fleets.filter(f => f.status && f.status.toLowerCase() !== 'done');
-  let violations = 0; let playHighAlarm = false; let playLowAlarm = false;
-
+  
+  const activeFleets = getFilteredFleets().filter(f => f.status && f.status.toLowerCase() !== 'done');
+  let violations = 0; 
+  let alarmToPlay = null; 
+ 
+  const lblLokasi = document.getElementById('tbl-lokasi');
+  if(lblLokasi && currentUser) {
+     lblLokasi.textContent = currentUser.location === 'ALL' ? '(Semua Lokasi)' : `(${currentUser.location})`;
+  }
+ 
   const enrichedFleets = activeFleets.map(f => {
     const status = f.status.toLowerCase();
     const qDur = f.arrivalTime ? elapsed(f.arrivalTime, f.unloadStartTime) : 0;
     const qStat = getKPIStatus(qDur, KPI_QUEUE);
+    
     let uDur = 0; let uStat = {cls:'', txt:'-', isCrit:0};
     if (status === 'unloading') {
       uDur = f.unloadStartTime ? elapsed(f.unloadStartTime, null) : 0;
       uStat = getKPIStatus(uDur, KPI_UNLOAD[f.fleetSize] || 60);
     }
-    if (qStat.isCrit === 2 || uStat.isCrit === 2) { violations++; playHighAlarm = true; }
-    else if (qStat.isCrit === 1 || uStat.isCrit === 1) playLowAlarm = true;
+    
+    if (qStat.isCrit === 2 || uStat.isCrit === 2) violations++;
+    
+    // Penentuan Alarm
+    if (status === 'queuing') {
+        if (qStat.isCrit === 2) alarmToPlay = 'critical'; 
+        else if (qStat.isCrit === 1 && alarmToPlay !== 'critical' && alarmToPlay !== 'extreme') alarmToPlay = 'warning';
+    } else if (status === 'unloading') {
+        if (uStat.isCrit === 2) alarmToPlay = 'extreme'; 
+        else if (uStat.isCrit === 1 && alarmToPlay !== 'extreme') alarmToPlay = 'warning'; 
+    }
     
     f.priorityScore = Math.max(qStat.isCrit, uStat.isCrit);
     f.qDur = qDur; f.qStat = qStat; f.uDur = uDur; f.uStat = uStat; return f;
   });
-
-  if (playHighAlarm) playAlarm('critical');
-  else if (playLowAlarm) playAlarm('warning');
-
-  enrichedFleets.sort((a, b) => b.priorityScore - a.priorityScore);
-  document.getElementById('kc-total').textContent = enrichedFleets.length;
-  document.getElementById('kc-queuing').textContent = enrichedFleets.filter(f=>f.status==='queuing').length;
-  document.getElementById('kc-unloading').textContent = enrichedFleets.filter(f=>f.status==='unloading').length;
-  document.getElementById('kc-violations').textContent = violations;
-  document.getElementById('ind-lewat-kpi').textContent = violations;
-
+ 
+  if (alarmToPlay) playAlarm(alarmToPlay);
+ 
+ enrichedFleets.sort((a, b) => b.priorityScore - a.priorityScore);
+  
+ if(document.getElementById('kc-total')) document.getElementById('kc-total').textContent = enrichedFleets.length;
+ if(document.getElementById('kc-queuing')) document.getElementById('kc-queuing').textContent = enrichedFleets.filter(f=>f.status==='queuing').length;
+ if(document.getElementById('kc-unloading')) document.getElementById('kc-unloading').textContent = enrichedFleets.filter(f=>f.status==='unloading').length;
+ if(document.getElementById('kc-violations')) document.getElementById('kc-violations').textContent = violations;
+ if(document.getElementById('ind-lewat-kpi')) document.getElementById('ind-lewat-kpi').textContent = violations;
+ 
   if (!enrichedFleets.length) { tbody.innerHTML = `<tr><td colspan="6"><div style="text-align:center; padding: 20px;">Operasional Clear.</div></td></tr>`; return; }
   
   tbody.innerHTML = enrichedFleets.map((f, i) => {
     const status = f.status.toLowerCase();
     const uMax = status ==='unloading' ? (KPI_UNLOAD[f.fleetSize] || '-') : '-';
+    // Label lokasi hanya tampil jika login sebagai PAO/Iyus (ALL)
+    const locBadge = currentUser && currentUser.location === 'ALL' ? `<br><span style="color:var(--blue); font-size:10px;">${f.lokasi}</span>` : '';
+    
     return `<tr>
-      <td>${i+1}</td>
+     <td>${i+1}</td>
       <td>Drv: <b>${f.driverName}</b><br>Chk: <b>${f.checkerName || '-'}</b></td>
-      <td><b>${f.plateNumber}</b><br><small>${f.fleetType}</small></td>
-      <td><span class="status-badge s-${status}">${status}</span></td>
+     <td><b>${f.plateNumber}</b><br><small>${f.fleetType}</small>${locBadge}</td>
+     <td><span class="status-badge s-${status}">${status}</span></td>
       <td class="kpi-cell ${f.qStat.cls}">${f.qDur}m / 180m<br><small>${f.qStat.txt}</small></td>
       <td class="kpi-cell ${f.uStat.cls}">${status==='unloading' ? `${f.uDur}m / ${uMax}m<br><small>${f.uStat.txt}</small>` : 'Menunggu'}</td>
     </tr>`;
   }).join('');
 }
-
+ 
 function sortTable(n) {
   var table, rows, switching, i, x, y, shouldSwitch, dir, switchcount = 0;
   table = document.getElementById("mainTable"); switching = true; dir = "asc"; 
@@ -1316,9 +1071,427 @@ function sortTable(n) {
     else { if (switchcount == 0 && dir == "asc") { dir = "desc"; switching = true; } }
   }
 }
-
-fetchDatabase();
-setView('tv'); 
+ 
+// ==========================================
+// 7. LOGIKA ANALITIK ARMADA
+// ==========================================
+function renderCharts() { 
+  processAnalitik(); 
+}
+ 
+function populateFilters() {
+  const currentData = getFilteredFleets();
+  if(!currentData || currentData.length === 0) return;
+  const origins = new Set(), types = new Set(), sizes = new Set(), checkers = new Set(), lokasis = new Set();
+ 
+ currentData.forEach(r => {
+    if(r.origin) origins.add(r.origin);
+    if(r.fleetType) types.add(r.fleetType);
+    if(r.fleetSize) sizes.add(r.fleetSize);
+    if(r.checkerName) checkers.add(r.checkerName);
+    if(r.lokasi) lokasis.add(r.lokasi);
+  });
+ 
+  const fillSelect = (id, set) => {
+    const el = document.getElementById(id);
+    if(!el) return;
+    
+    // Simpan value saat ini agar tidak tereset jika options diupdate
+    const currentVal = el.value;
+    const firstOpt = el.options[0].outerHTML; 
+    el.innerHTML = firstOpt + Array.from(set).map(item => `<option value="${item}">${item}</option>`).join('');
+    
+    // Kembalikan ke pilihan sebelumnya jika masih ada di daftar
+    if (Array.from(set).includes(currentVal)) {
+        el.value = currentVal;
+    }
+  };
+ 
+ fillSelect('filter-origin-analitik', origins);
+ fillSelect('filter-type-analitik', types);
+ fillSelect('filter-size-analitik', sizes);
+ fillSelect('filter-checker-analitik', checkers);
+ fillSelect('filter-lokasi-analitik', lokasis);
+}
+ 
+function resetAnalitikFilters() {
+ document.getElementById('filter-start').value = '';
+  document.getElementById('filter-end').value = '';
+ document.getElementById('filter-origin-analitik').value = 'all';
+ document.getElementById('filter-type-analitik').value = 'all';
+ document.getElementById('filter-size-analitik').value = 'all';
+ document.getElementById('filter-checker-analitik').value = 'all';
+ document.getElementById('filter-lokasi-analitik').value = 'all';
+  processAnalitik();
+}
+ 
+function processAnalitik() {
+  const currentData = getFilteredFleets();
+  if(!currentData) return;
+  
+  const start = document.getElementById('filter-start') ? document.getElementById('filter-start').value : '';
+  const end = document.getElementById('filter-end') ? document.getElementById('filter-end').value : '';
+  const origin = document.getElementById('filter-origin-analitik') ? document.getElementById('filter-origin-analitik').value : 'all';
+  const type = document.getElementById('filter-type-analitik') ? document.getElementById('filter-type-analitik').value : 'all';
+  const size = document.getElementById('filter-size-analitik') ? document.getElementById('filter-size-analitik').value : 'all';
+  const checker = document.getElementById('filter-checker-analitik') ? document.getElementById('filter-checker-analitik').value : 'all';
+  const lokasi = document.getElementById('filter-lokasi-analitik') ? document.getElementById('filter-lokasi-analitik').value : 'all';
+ 
+  currentFilteredData = currentData.filter(row => {
+    if(start && row.arrivalTime) { if(new Date(row.arrivalTime) < new Date(start)) return false; }
+    if(end && row.arrivalTime) {
+      const endDate = new Date(end); endDate.setHours(23,59,59,999);
+      if(new Date(row.arrivalTime) > endDate) return false;
+    }
+    if(origin !== 'all' && row.origin !== origin) return false;
+    if(type !== 'all' && row.fleetType !== type) return false;
+    if(size !== 'all' && row.fleetSize !== size) return false;
+    if(checker !== 'all' && row.checkerName !== checker) return false;
+    if(lokasi !== 'all' && row.lokasi !== lokasi) return false;
+    return true;
+  });
+ 
+ generateAI(currentFilteredData);
+ updateAnalitikCharts(currentFilteredData);
+}
+ 
+function generateAI(data) {
+  const box = document.getElementById('ai-insight-text');
+  if(!box) return;
+  if(!data || data.length === 0) {
+    box.innerHTML = "Tidak ada data pada rentang waktu atau filter yang Anda pilih.";
+    return;
+  }
+ 
+  let total = data.length;
+  let kpiViolations = 0;
+  let totalQueueTime = 0, totalUnloadTime = 0;
+  let checkerStats = {};
+  let worstAnomalies = [];
+ 
+  data.forEach(r => {
+    let qDur = r.arrivalTime && r.unloadStartTime ? elapsed(r.arrivalTime, r.unloadStartTime) : 0;
+    let uDur = r.unloadStartTime && r.unloadEndTime ? elapsed(r.unloadStartTime, r.unloadEndTime) : 0;
+    
+    totalQueueTime += qDur;
+    totalUnloadTime += uDur;
+ 
+    let isViolated = false;
+    if(qDur > KPI_QUEUE) { 
+      isViolated = true; 
+     worstAnomalies.push(`Antrian Overdue (${qDur}m) dari origin ${r.origin || '-'}`); 
+    }
+    if(r.fleetSize && uDur > (KPI_UNLOAD[r.fleetSize] || 60)) { isViolated = true; }
+    if(isViolated) kpiViolations++;
+ 
+    if(r.checkerName) {
+     if(!checkerStats[r.checkerName]) checkerStats[r.checkerName] = { count: 0, time: 0 };
+     checkerStats[r.checkerName].count++;
+     checkerStats[r.checkerName].time += uDur;
+    }
+  });
+ 
+  let violationRate = Math.round((kpiViolations / total) * 100);
+  let avgQueue = Math.round(totalQueueTime / total);
+  
+  let worstChecker = ""; let maxAvgTime = 0;
+  for(let c in checkerStats) {
+    let avgT = checkerStats[c].time / checkerStats[c].count;
+    if(avgT > maxAvgTime && checkerStats[c].count > 1) { maxAvgTime = avgT; worstChecker = c; }
+  }
+ 
+  let reco = '<b style="color: var(--green);">🟢 Operasional Berjalan Optimal.</b> Tidak ada kendala mencolok.';
+  if(violationRate > 20) {
+    reco = `<b style="color: var(--red);">🔴 Tingkat Pelanggaran Tinggi (>20%).</b> Anomali Proses Ditemukan!<br>Rekomendasi: Tambah alokasi personil lapangan atau evaluasi alur kerja gate-to-dock.`;
+  } else if(avgQueue > 60) {
+    reco = `<b style="color: var(--yellow);">🟡 Rata-rata Waktu Antri Tinggi (${avgQueue}m).</b><br>Rekomendasi: Percepat administrasi dari tim Security ke Checker.`;
+  }
+ 
+  let insightHtml = `
+    <b>📊 Kesimpulan Matematis (${currentTerm}):</b><br>
+    • Total Volume Diproses: <b>${total} Armada</b><br>
+    • Rasio Pelanggaran SLA: <b>${violationRate}%</b> (${kpiViolations} armada melewati KPI)<br>
+    • Rata-rata Durasi Antrian (Kedatangan - Proses): <b>${avgQueue} menit</b><br>
+  `;
+  
+  if(worstChecker) insightHtml += `• Evaluasi Personil: Waktu proses terlama tercatat pada <b>${worstChecker}</b> dengan rata-rata <b>${Math.round(maxAvgTime)} menit/armada</b>.<br>`;
+  
+  insightHtml += `<br>${reco}`;
+  box.innerHTML = insightHtml;
+}
+ 
+function updateAnalitikCharts(data) {
+  const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+  const textColor = isDark ? '#e2eaf5' : '#4b5563';
+  const gridColor = isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)';
+ 
+  Chart.defaults.color = textColor;
+ Chart.defaults.font.family = "'Nunito', sans-serif";
+ 
+  let kpiOk = 0, kpiFail = 0;
+  let originCounts = {};
+  let checkerStats = {};
+ 
+  data.forEach(r => {
+    let qDur = r.arrivalTime && r.unloadStartTime ? elapsed(r.arrivalTime, r.unloadStartTime) : 0;
+    let uDur = r.unloadStartTime && r.unloadEndTime ? elapsed(r.unloadStartTime, r.unloadEndTime) : 0;
+    
+    let isFail = false;
+    if(qDur > KPI_QUEUE) isFail = true;
+    if(r.fleetSize && uDur > (KPI_UNLOAD[r.fleetSize] || 60)) isFail = true;
+    
+    if(isFail) kpiFail++; else kpiOk++;
+    if(r.origin) originCounts[r.origin] = (originCounts[r.origin] || 0) + 1;
+    if(r.checkerName) {
+     if(!checkerStats[r.checkerName]) checkerStats[r.checkerName] = { sum:0, count:0 };
+     checkerStats[r.checkerName].sum += uDur;
+     checkerStats[r.checkerName].count++;
+    }
+  });
+ 
+  // 1. CHART KPI
+  const ctxKPI = document.getElementById('chartKPI');
+  if(ctxKPI) {
+    if(chartKPI) chartKPI.destroy();
+    chartKPI = new Chart(ctxKPI, {
+      type: 'doughnut',
+      data: {
+        labels: ['Sesuai SLA', 'Pelanggaran KPI'],
+        datasets: [{ data: [kpiOk, kpiFail], backgroundColor: ['#10b981', '#ef4444'], borderWidth: 0, hoverOffset: 4 }]
+      },
+      options: { responsive: true, cutout: '70%', plugins: { legend: { position: 'bottom' } } }
+    });
+  }
+ 
+  // 2. CHART ORIGIN
+  const ctxOrigin = document.getElementById('chartOrigin');
+  if(ctxOrigin) {
+    if(chartOrigin) chartOrigin.destroy();
+    let oKeys = Object.keys(originCounts).sort((a,b)=>originCounts[b]-originCounts[a]).slice(0,5);
+    let oVals = oKeys.map(k=>originCounts[k]);
+    chartOrigin = new Chart(ctxOrigin, {
+      type: 'bar',
+      data: {
+        labels: oKeys,
+        datasets: [{ label: 'Total Armada (Volume)', data: oVals, backgroundColor: '#38bdf8', borderRadius: 4, hoverBackgroundColor: '#0ea5e9' }]
+      },
+      options: { 
+        responsive: true, 
+        plugins: { legend: { display: false } }, 
+        scales: { y: { grid: { color: gridColor } }, x: { grid: { color: gridColor } } },
+        onHover: (event, chartElement) => { event.native.target.style.cursor = chartElement[0] ? 'pointer' : 'default'; },
+        onClick: (event, elements) => {
+           if(elements.length > 0) {
+               const index = elements[0].index;
+               const selectedOrigin = chartOrigin.data.labels[index];
+               document.getElementById('filter-origin-analitik').value = selectedOrigin;
+               toast(`🔍 Filter diterapkan: Origin ${selectedOrigin}`);
+               processAnalitik();
+            }
+        }
+      }
+    });
+  }
+ 
+  // 3. CHART CHECKER
+  const ctxChecker = document.getElementById('chartChecker');
+  if(ctxChecker) {
+    if(chartChecker) chartChecker.destroy();
+    let cKeys = Object.keys(checkerStats);
+    let cVals = cKeys.map(k => Math.round(checkerStats[k].sum / checkerStats[k].count));
+    chartChecker = new Chart(ctxChecker, {
+      type: 'bar',
+      data: {
+        labels: cKeys,
+        datasets: [{ label: `Waktu Rata-Rata (Menit)`, data: cVals, backgroundColor: '#f59e0b', borderRadius: 4, hoverBackgroundColor: '#d97706' }]
+      },
+      options: { 
+        responsive: true, 
+        plugins: { legend: { display: false } }, 
+        scales: { y: { grid: { color: gridColor } }, x: { grid: { color: gridColor } } },
+        onHover: (event, chartElement) => { event.native.target.style.cursor = chartElement[0] ? 'pointer' : 'default'; },
+        onClick: (event, elements) => {
+           if(elements.length > 0) {
+               const index = elements[0].index;
+               const selectedChecker = chartChecker.data.labels[index];
+               document.getElementById('filter-checker-analitik').value = selectedChecker;
+               toast(`🔍 Filter diterapkan: Checker ${selectedChecker}`);
+               processAnalitik();
+            }
+        }
+      }
+    });
+  }
+}
+ 
+function downloadFilteredData() {
+ if(!currentFilteredData || currentFilteredData.length === 0) { 
+    toast("Tidak ada data untuk diekspor pada filter ini.", "err"); return; 
+  }
+  const allColumns = [];
+ currentFilteredData.forEach(row => {
+   Object.keys(row).forEach(key => { if(!allColumns.includes(key)) allColumns.push(key); });
+  });
+ 
+  let csvContent = allColumns.join(",") + "\n";
+  currentFilteredData.forEach(row => {
+    let rowValues = allColumns.map(colName => {
+      let cellData = (row[colName] === undefined || row[colName] === null) ? "" : row[colName];
+      if (typeof cellData === 'string') {
+        cellData = cellData.replace(/"/g, '""');
+        if (cellData.includes(",") || cellData.includes("\n") || cellData.includes('"')) { cellData = `"${cellData}"`; }
+      }
+      return cellData;
+    });
+    csvContent += rowValues.join(",") + "\n";
+  });
+ 
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+ link.setAttribute("href", url);
+  link.setAttribute("download", `DB_NADI_Report_${new Date().toISOString().slice(0,10)}.csv`);
+ document.body.appendChild(link); link.click(); document.body.removeChild(link);
+  toast("✅ Data Berhasil Diunduh (Berdasarkan Filter).");
+}
+ 
+// ==========================================
+// 8. FUNGSI AI ASSISTANT
+// ==========================================
+function saveToKnowledgeBase(filename, textData) {
+  let cleanText = textData.replace(/(\r\n|\n|\r)/gm, " ").replace(/\s+/g, " ").trim();
+  aiKnowledgeBase += `\n[File: ${filename}] Isi Data: ${cleanText}`;
+  const sizeKB = Math.round(aiKnowledgeBase.length / 1024);
+  document.getElementById('ai-memory-status').textContent = `Memori AI: Aktif (${sizeKB} KB Knowledge)`;
+}
+ 
+async function processSmartUpload(inputId) {
+  const fileInput = document.getElementById(inputId);
+  const file = fileInput.files[0];
+  if(!file) return;
+ 
+  const ext = file.name.split('.').pop().toLowerCase();
+ appendAIChat("User", `<i>📎 Melampirkan File: <b>${file.name}</b></i>`);
+  toast("⏳ AI NADI sedang memproses dokumen...");
+ 
+  if (['jpg', 'jpeg', 'png'].includes(ext) || file.type.startsWith('image/')) {
+   appendAIChat("AI", "Saya sedang memindai tulisan di gambar tersebut. Mohon tunggu sebentar ya... 🔍");
+    const reader = new FileReader();
+    reader.onload = function() {
+     Tesseract.recognize(reader.result, 'ind', { logger: m => console.log(m) })
+        .then(({ data: { text } }) => {
+          if(text.trim().length < 2) {
+           appendAIChat("AI", "Hmm, teks di gambarnya kurang jelas atau tidak terbaca. Boleh coba foto yang lebih terang? 😅");
+            return;
+          }
+         saveToKnowledgeBase(file.name, text);
+          appendAIChat("AI", `✅ Gambar <b>${file.name}</b> berhasil saya baca dan rekam. Mau saya simpulkan isinya atau mencari info spesifik dari foto itu?`);
+        })
+        .catch(err => { toast("❌ Gagal memproses OCR Gambar", "err"); });
+    };
+    reader.readAsDataURL(file);
+  } 
+  else if (['xlsx', 'xls', 'csv'].includes(ext)) {
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      const data = new Uint8Array(e.target.result);
+      const workbook = XLSX.read(data, {type: 'array'});
+      const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+      const rawTextData = XLSX.utils.sheet_to_csv(firstSheet);
+      
+     saveToKnowledgeBase(file.name, rawTextData);
+     appendAIChat("AI", `✅ Mantap! Data spreadsheet <b>${file.name}</b> berhasil saya ekstrak ke memori. Sekarang tanyakan saja apa yang ingin dianalisa dari file Excel tersebut. 📊`);
+    };
+   reader.readAsArrayBuffer(file);
+  } 
+  else {
+    const reader = new FileReader();
+    reader.onload = function(e) {
+     saveToKnowledgeBase(file.name, e.target.result);
+     appendAIChat("AI", `✅ Dokumen teks/Word <b>${file.name}</b> berhasil saya pahami. Mari kita bahas instruksi di dalamnya!`);
+    };
+    reader.readAsText(file);
+  }
+ 
+  fileInput.value = "";
+}
+ 
+function appendAIChat(sender, msg) {
+  const box = document.getElementById('ai-chat-box');
+  const isUser = sender === 'User';
+  const align = isUser ? 'align-self: flex-end; background: var(--amber-dim); border-right: 3px solid var(--amber); color: var(--amber);' : 'align-self: flex-start; background: rgba(56,189,248,0.1); border-left: 3px solid var(--blue); color: var(--text);';
+  const name = isUser ? '👤 Anda' : '🤖 AI NADI';
+  
+  const html = `<div style="padding: 10px 14px; border-radius: 12px; max-width: 85%; font-size: 13px; line-height: 1.5; ${align}"><b>${name}:</b><br>${msg}</div>`;
+  box.innerHTML += html;
+  box.scrollTop = box.scrollHeight;
+}
+ 
+function sendAIChat() {
+  const input = document.getElementById('ai-chat-input');
+  const val = input.value.trim();
+  if(!val) return;
+  
+ appendAIChat("User", val);
+  input.value = "";
+ 
+  setTimeout(() => {
+    let response = "";
+    const lowerVal = val.toLowerCase();
+ 
+    const greetings = ['halo', 'hai', 'pagi', 'siang', 'sore', 'malam', 'assalamualaikum'];
+    const praises = ['mantap', 'keren', 'bagus', 'ok', 'oke', 'baik', 'sip', 'terima kasih', 'makasih', 'thanks'];
+    const questionsAboutAI = ['siapa kamu', 'tentang ai', 'bisa apa saja', 'namamu siapa'];
+ 
+    if (greetings.some(g => lowerVal.includes(g)) && lowerVal.length < 25) {
+        response = "Halo! Senang bisa ngobrol dengan Anda. Saya AI NADI, siap membantu urusan analisa SLA armada atau merekap dokumen Anda. Ada yang bisa saya bantu sekarang?";
+    } 
+    else if (praises.some(p => lowerVal.includes(p)) && lowerVal.length < 25) {
+        response = "Sama-sama! Selalu semangat untuk kelancaran operasional kita. Jangan ragu nanya lagi kalau butuh sesuatu ya! 🚀";
+    }
+    else if (questionsAboutAI.some(q => lowerVal.includes(q))) {
+        response = "Saya adalah <b>Asisten AI NADI</b> (Dashboard Monitoring Armada), dikembangkan oleh <b>Bpk. Achmad Taufik</b>. Saya bertugas membantu Anda menganalisa telatnya operasional, merangkum dokumen lapangan, hingga membaca foto SOP. 😊";
+    }
+    else if (lowerVal.includes("sla") || lowerVal.includes("kpi") || lowerVal.includes("telat") || lowerVal.includes("overdue") || lowerVal.includes("lama")) {
+        response = `<b>📊 Solusi Operasional & SLA:</b><br>Menurut standar operasional NADI, batas wajar sebuah armada antri di Gate adalah <b>180 menit</b>.<br><br>💡 <b>Rekomendasi Presisi:</b> Jika alarm merah menyala, segera cek di menu 'Checker'. Alokasikan Checker yang sedang santai ke armada tipe *Large* (Fuso/Wingbox) agar bottleneck tidak merambat ke armada kecil.`;
+    }
+    
+    if (aiKnowledgeBase !== "" && !response) {
+        const stopwords = ['dan', 'atau', 'di', 'ke', 'dari', 'yang', 'ini', 'itu', 'tolong', 'cari', 'apa', 'bagaimana'];
+        const keywords = lowerVal.split(" ").filter(w => w.length > 3 && !stopwords.includes(w));
+        
+        if (keywords.length > 0) {
+            const sentences = aiKnowledgeBase.split(/[.?!]/).map(s => s.trim()).filter(s => s.length > 10);
+            
+            let matchedSentences = [];
+           sentences.forEach(sentence => {
+                const sLow = sentence.toLowerCase();
+                let score = 0;
+               keywords.forEach(k => { if(sLow.includes(k)) score++; });
+               if(score > 0) matchedSentences.push({text: sentence, score: score});
+            });
+            
+           if(matchedSentences.length > 0) {
+               matchedSentences.sort((a,b) => b.score - a.score);
+                let bestMatches = matchedSentences.slice(0, 2).map(m => `"${m.text}"`).join("<br><br>• ");
+               response = `<b>💡 Berdasarkan analisa file yang Anda unggah sebelumnya:</b><br><br>• ${bestMatches}<br><br><i>Semoga temuan data di atas menjawab kebingungan Anda. Butuh analisa dari file lainnya?</i>`;
+            }
+        }
+    }
+ 
+    if (!response) {
+       if (aiKnowledgeBase === "") {
+           response = "Hmm, pertanyaan Anda menarik tapi saya belum punya konteks datanya. Coba <b>lampirkan file Excel / Word / Foto</b> menggunakan ikon klip kertas (📎) di samping kolom ketik ini agar saya bisa analisa dan kasih rekomendasinya! 😉";
+       } else {
+           response = "Saya sudah menelusuri memori dokumen yang Anda upload, tapi sepertinya kata kunci yang Anda tanyakan tidak ditemukan secara pasti di sana. Bisa diperjelas lagi pertanyaannya?";
+       }
+    }
+ 
+   appendAIChat("AI", response);
+  }, 1000);
+}
+ 
+// 9. REFRESH INTERVAL
 setInterval(fetchDatabase, 15000);
 </script>
 </body>
