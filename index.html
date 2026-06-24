@@ -206,7 +206,7 @@
     <div class="sidebar-title">
       DB-NADI
       <div class="sidebar-badges">
-        <span class="sidebar-badge">Web v3.0</span>
+        <span class="sidebar-badge">Web v5.0</span>
         <span class="sidebar-badge" id="user-location-badge">ALL</span>
       </div>
     </div>
@@ -525,8 +525,10 @@
       - v1.1: Integrasi Backend Google Sheets & Auto Timer.<br>
       - v1.2: Integrasi Validasi Foto.<br>
       - v1.3: Fitur Audio-to-Text, Geolocation, Export Data, & Modul Pencarian Global.<br>
-      - v2.1.0: Locked TV Mode on Refresh, Clean Mobile UI, Burger Integration.<br>
-      - v3.0 (Terbaru): Dukungan Multi-Lokasi, Integrasi AI Lanjutan, Alarm Progresif, Backend Authentication.</p><br>
+      - v2.0: Locked TV Mode on Refresh, Clean Mobile UI, Burger Integration.<br>
+      - v3.0: Dukungan Multi-Lokasi, Integrasi AI Lanjutan, Alarm Progresif, Backend Authentication.<br>
+      - v4.0: Optimasi Latensi Tinggi & Struktur Basis Data (Single-Column Array Scan di Backend).<br>
+      - v5.0 (Terbaru): Implementasi Engine Optimistic UI (Nol Delay Lapangan), Syncing Latar Belakang, & Sesi Login Permanen (Keep Me Logged In).</p><br>
     </div>
   </div>
 </div>
@@ -536,11 +538,20 @@
     <span class="modal-close" onclick="closeModal('modalHelpCenter')">✖</span>
     <div class="modal-title">Help Center</div>
     <div class="modal-body">
-     <p><b>Cara Menggunakan DB-NADI:</b></p>
-      <ul style="padding-left: 20px; margin-top: 10px; margin-bottom: 10px;">
-       <li><b>Security:</b> Input kedatangan armada beserta kota asal (Origin).</li>
-       <li><b>Checker:</b> Monitoring tugas bongkar muat di handphone lapangan.</li>
-       <li><b>TV Dashboard:</b> Otomatis terkunci sebagai tampilan utama saat halaman di-refresh.</li>
+     <p><b>Panduan Operasional Sistem DB-NADI:</b></p>
+      <ul style="padding-left: 20px; margin-top: 10px; margin-bottom: 10px; line-height: 1.6;">
+        <li><b>Security (Gate):</b> 
+          <br>• Input data kedatangan armada, nomor polisi, dan asal kota (Origin) untuk hub Unloading.
+          <br>• Khusus di hub <i>Soekarno Hatta 452</i>, input kota tujuan (Destination) dan wajib melakukan update di area bawah untuk mencatat jam <b>Keberangkatan Armada</b> yang telah selesai proses.
+        </li>
+        <li style="margin-top: 10px;"><b>Checker (Dock/Lapangan):</b> 
+          <br>• Melakukan monitoring dan kontrol tugas secara instan melalui handphone lapangan.
+          <br>• Klik tombol untuk memulai/menyelesaikan proses operasional yang otomatis menyesuaikan terminologi lokasi: <b>Unloading</b> di Gedebage atau <b>Loading</b> di Soekarno Hatta 452.
+        </li>
+        <li style="margin-top: 10px;"><b>TV Dashboard (Control Room):</b> 
+          <br>• Menampilkan monitoring antrian, durasi proses, rasio pelanggaran SLA, dan alarm progresif secara Real-Time.
+          <br>• Sistem otomatis mendeteksi sesi dan mengunci tampilan utama sesuai dengan regional lokasi kerja petugas saat halaman di-refresh.
+        </li>
       </ul>
     </div>
   </div>
