@@ -834,7 +834,11 @@ function playAlarm(level) {
  
 function getSize(type) { for (const [sz, arr] of Object.entries(FLEET_SIZES)) { if (arr.includes(type)) return sz; } return 'small'; }
 function elapsed(startIso, endIso) { const end = endIso ? new Date(endIso) : new Date(); return Math.max(0, Math.floor((end - new Date(startIso)) / 60000)); }
-function fmtHM(iso) { const d = new Date(iso); return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`; }
+function fmtHM(iso) { 
+  const d = new Date(iso); 
+  // Menggunakan getUTCHours dan getUTCMinutes agar tetap sesuai dengan teks asli di Spreadsheet
+  return `${String(d.getUTCHours()).padStart(2,'0')}:${String(d.getUTCMinutes()).padStart(2,'0')}`; 
+}
  
 async function fetchDatabase() {
   if (!currentUser) return; // Jangan fetch data kalau belum login
