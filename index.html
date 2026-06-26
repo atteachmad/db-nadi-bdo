@@ -104,7 +104,7 @@
     .fleet-card-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; }
     .fleet-name { font-weight: 700; font-size: 15px; } .fleet-meta { font-size: 12px; color: var(--text2); font-family: 'IBM Plex Mono', monospace; margin-top: 2px; }
     .status-badge { display: inline-flex; align-items: center; padding: 4px 10px; border-radius: 20px; font-family: 'Rajdhani', sans-serif; font-size: 12px; font-weight: 700; text-transform: uppercase; }
-    .s-queuing { background: var(--blue-dim); color: var(--blue); } .s-unloading { background: var(--amber-dim); color: var(--amber); } .s-done { background: var(--green-dim); color: var(--green); }
+    .s-antrian { background: var(--blue-dim); color: var(--blue); } .s-unloading { background: var(--amber-dim); color: var(--amber); } .s-done { background: var(--green-dim); color: var(--green); }
     
     .tv-wrap { padding: 20px 24px 32px; min-height: 100vh; min-height: 100dvh; }
     .tv-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 22px; padding-bottom: 16px; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
@@ -316,7 +316,7 @@
     <div class="filter-box">
       <select class="form-select" id="filter-status" onchange="updateCheckerFilter()">
         <option value="all">🚦 Semua Task</option>
-        <option value="queuing" id="opt-queuing">🔄 Mulai Unloading (Antri)</option>
+        <option value="antrian" id="opt-antrian">🔄 Mulai Unloading (Antri)</option>
         <option value="unloading" id="opt-unloading">✅ Selesai Unloading (Proses)</option>
       </select>
     </div>
@@ -349,7 +349,7 @@
  
     <div class="kpi-row">
       <div class="kpi-card kc-total"><div class="kpi-card-label">Total Armada Aktif</div><div class="kpi-card-val" id="kc-total" style="color:var(--text)">0</div></div>
-      <div class="kpi-card kc-queuing"><div class="kpi-card-label" id="lbl-queuing">⏳ Menunggu Unload</div><div class="kpi-card-val" id="kc-queuing" style="color:var(--blue)">0</div></div>
+      <div class="kpi-card kc-antrian"><div class="kpi-card-label" id="lbl-antrian">⏳ Menunggu Unload</div><div class="kpi-card-val" id="kc-antrian" style="color:var(--blue)">0</div></div>
       <div class="kpi-card kc-unloading"><div class="kpi-card-label" id="lbl-unloading">🔄 Sedang Unload</div><div class="kpi-card-val" id="kc-unloading" style="color:var(--amber)">0</div></div>
       <div class="kpi-card kc-violations"><div class="kpi-card-label">🔴 Alarm / Overdue</div><div class="kpi-card-val" id="kc-violations" style="color:var(--red)">0</div></div>
     </div>
@@ -705,7 +705,7 @@ function applyTerminology() {
   const elSubtitle = document.getElementById('checker-subtitle');
   if(elSubtitle) elSubtitle.textContent = `Daftar antrian dan operasional armada (${currentTerm}).`;
   
-  const elOptQ = document.getElementById('opt-queuing');
+  const elOptQ = document.getElementById('opt-antrian');
   if(elOptQ) elOptQ.textContent = `🔄 Mulai ${currentTerm} (Antri)`;
   
   const elOptU = document.getElementById('opt-unloading');
@@ -714,7 +714,7 @@ function applyTerminology() {
   const elTvHead = document.getElementById('tv-header-sub');
   if(elTvHead) elTvHead.textContent = `Antrian & ${currentTerm} - Real Time`;
   
-  const elLblQ = document.getElementById('lbl-queuing');
+  const elLblQ = document.getElementById('lbl-antrian');
   if(elLblQ) elLblQ.textContent = `⏳ Menunggu ${currentTerm}`;
   
   const elLblU = document.getElementById('lbl-unloading');
@@ -917,7 +917,7 @@ function submitArrival() {
   // ⚡ OPTIMISTIC UI: Tambah ke lokal & langsung render tanpa nunggu server
   fleets.push({
     id: newId, secName: secName, driverName: driver, plateNumber: plate, fleetType: type, fleetSize: getSize(type),
-    arrivalTime: nowIso, checkerName: '', status: 'queuing', origin: origin, lokasi: currentUser.location, departureTime: null
+    arrivalTime: nowIso, checkerName: '', status: 'antrian', origin: origin, lokasi: currentUser.location, departureTime: null
   });
   
   document.getElementById('f-plate').value = ''; document.getElementById('f-driver').value = ''; document.getElementById('f-origin').value = '';
@@ -1005,7 +1005,7 @@ function renderChecker() {
   
   el.innerHTML = list.map(f => {
     let content = ''; const status = f.status.toLowerCase();
-    if(status === 'queuing') {
+    if(status === 'antrian') {
       content = `<div class="form-group" style="margin-top:10px;"><input type="text" id="cn-${f.id}" class="form-input" value="${currentUser ? currentUser.name : ''}" readonly style="background:var(--bg); color:var(--amber);"></div>
                  <button class="btn btn-primary" style="margin-top:5px;" onclick="startUnloading('${f.id}')">🔄 MULAI ${currentTerm.toUpperCase()}</button>`;
     } else if(status === 'unloading') {
@@ -1081,7 +1081,7 @@ function renderTV() {
     
     // --- 1. LOGIKA LIVE TIMER KEDATANGAN / ANTRIAN ---
     let qDur = 0;
-    if (status === 'queuing') {
+    if (status === 'antrian') {
         // Jika masih antri, pakai Waktu Live (Sekarang) - Berjalan naik terus tiap menit
         qDur = f.arrivalTime ? elapsed(f.arrivalTime, null) : 0;
     } else {
@@ -1105,7 +1105,7 @@ function renderTV() {
     if (qStat.isCrit === 2 || uStat.isCrit === 2) violations++;
     
     // Penentuan Alarm
-    if (status === 'queuing') {
+    if (status === 'antrian') {
         if (qStat.isCrit === 2) alarmToPlay = 'critical'; 
         else if (qStat.isCrit === 1 && alarmToPlay !== 'critical' && alarmToPlay !== 'extreme') alarmToPlay = 'warning';
     } else if (status === 'unloading') {
@@ -1122,7 +1122,7 @@ function renderTV() {
  enrichedFleets.sort((a, b) => b.priorityScore - a.priorityScore);
   
  if(document.getElementById('kc-total')) document.getElementById('kc-total').textContent = enrichedFleets.length;
- if(document.getElementById('kc-queuing')) document.getElementById('kc-queuing').textContent = enrichedFleets.filter(f=>f.status==='queuing').length;
+ if(document.getElementById('kc-antrian')) document.getElementById('kc-antrian').textContent = enrichedFleets.filter(f=>f.status==='antrian').length;
  if(document.getElementById('kc-unloading')) document.getElementById('kc-unloading').textContent = enrichedFleets.filter(f=>f.status==='unloading').length;
  if(document.getElementById('kc-violations')) document.getElementById('kc-violations').textContent = violations;
  if(document.getElementById('ind-lewat-kpi')) document.getElementById('ind-lewat-kpi').textContent = violations;
