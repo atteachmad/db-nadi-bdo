@@ -88,7 +88,6 @@
     .form-input { padding-right: 44px; }
     .form-input:focus, .form-select:focus { border-color: var(--amber); }
     
-    /* MODIFIKASI: Filter tanggal icon menjadi warna putih (Invert warna) */
     input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(1); cursor: pointer; }
     [data-theme="light"] input[type="date"]::-webkit-calendar-picker-indicator { filter: none; }
 
@@ -806,7 +805,7 @@ function startDictation(inputId, iconEl) {
 }
  
 // ==========================================
-// 4. LOGIKA DATA, ALARM & FILTER
+// 4. LOGIKA DATA, ALARM & FILTER (REVISI LIVE TIMER)
 // ==========================================
 function playAlarm(level) {
   try {
@@ -831,13 +830,39 @@ function playAlarm(level) {
     osc.onended = () => { currentOscillator = null; };
   } catch(e) {} 
 }
- 
+
 function getSize(type) { for (const [sz, arr] of Object.entries(FLEET_SIZES)) { if (arr.includes(type)) return sz; } return 'small'; }
-function elapsed(startIso, endIso) { const end = endIso ? new Date(endIso) : new Date(); return Math.max(0, Math.floor((end - new Date(startIso)) / 60000)); }
-function fmtHM(iso) { 
-  const d = new Date(iso); 
-  // Menggunakan getUTCHours dan getUTCMinutes agar tetap sesuai dengan teks asli di Spreadsheet
-  return `${String(d.getUTCHours()).padStart(2,'0')}:${String(d.getUTCMinutes()).padStart(2,'0')}`; 
+
+// SOLUSI BUG TIMER: Sinkronisasi format ISO lokal untuk dikirim ke Google Sheets
+function getLocalIso() {
+  const d = new Date();
+  const pad = n => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}.000Z`;
+}
+
+// SOLUSI BUG TIMER: Menetralisir format 'Z' (UTC) dari backend agar selalu dibaca WIB (Lokal)
+function getSafeDate(isoStr) {
+  if (!isoStr) return null;
+  let cleanIso = isoStr.trim();
+  if (cleanIso.endsWith('Z')) cleanIso = cleanIso.slice(0, -1);
+  const d = new Date(cleanIso);
+  return isNaN(d.getTime()) ? null : d;
+}
+
+// Logika Waktu yang sudah kebal terhadap bentrok Timezone
+function elapsed(startIso, endIso) {
+  const start = getSafeDate(startIso);
+  if (!start) return 0;
+  
+  const end = getSafeDate(endIso) || new Date();
+  return Math.max(0, Math.floor((end - start) / 60000));
+}
+
+function fmtHM(iso) {
+  const d = getSafeDate(iso);
+  if (!d) return '--:--';
+  // Menggunakan getHours() normal karena waktu sudah dinetralisir menjadi lokal
+  return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
 }
  
 async function fetchDatabase() {
@@ -887,7 +912,7 @@ function submitArrival() {
   }
   
   const newId = 'ARR-' + Date.now().toString().slice(-6);
-  const nowIso = new Date().toISOString();
+  const nowIso = getLocalIso();
   
   // ⚡ OPTIMISTIC UI: Tambah ke lokal & langsung render tanpa nunggu server
   fleets.push({
@@ -948,14 +973,14 @@ function renderSecurityTasks() {
 function submitDeparture(id) {
   // ⚡ OPTIMISTIC UI
   const fIdx = fleets.findIndex(f => f.id === id);
-  if(fIdx > -1) fleets[fIdx].departureTime = new Date().toISOString();
+  if(fIdx > -1) fleets[fIdx].departureTime = getLocalIso();
   renderAll();
   toast('⏳ Menyimpan ke server...');
 
   // ☁️ Background Fetch
   fetch(API_URL, { 
     method: 'POST', 
-    body: JSON.stringify({ action: 'updateDeparture', id: id, departureTime: new Date().toISOString() }) 
+    body: JSON.stringify({ action: 'updateDeparture', id: id, departureTime: getLocalIso() }) 
   })
   .then(() => { toast('✅ Keberangkatan Berhasil Dicatat!'); fetchDatabase(); })
   .catch(err => toast('❌ ' + err, 'err'));
@@ -993,7 +1018,7 @@ function renderChecker() {
  
 function startUnloading(id) {
   const cName = document.getElementById(`cn-${id}`).value.trim();
-  const nowIso = new Date().toISOString();
+  const nowIso = getLocalIso();
   
   // ⚡ OPTIMISTIC UI
   const fIdx = fleets.findIndex(f => f.id === id);
@@ -1012,7 +1037,7 @@ function startUnloading(id) {
 }
  
 function finishUnloading(id) {
-  const nowIso = new Date().toISOString();
+  const nowIso = getLocalIso();
   
   // ⚡ OPTIMISTIC UI
   const fIdx = fleets.findIndex(f => f.id === id);
@@ -1053,13 +1078,28 @@ function renderTV() {
  
   const enrichedFleets = activeFleets.map(f => {
     const status = f.status.toLowerCase();
-    const qDur = f.arrivalTime ? elapsed(f.arrivalTime, f.unloadStartTime) : 0;
+    
+    // --- 1. LOGIKA LIVE TIMER KEDATANGAN / ANTRIAN ---
+    let qDur = 0;
+    if (status === 'queuing') {
+        // Jika masih antri, pakai Waktu Live (Sekarang) - Berjalan naik terus tiap menit
+        qDur = f.arrivalTime ? elapsed(f.arrivalTime, null) : 0;
+    } else {
+        // Jika sudah diklik mulai unloading/done, waktu antrian berhenti (terkunci otomatis)
+        qDur = f.arrivalTime && f.unloadStartTime ? elapsed(f.arrivalTime, f.unloadStartTime) : 0;
+    }
     const qStat = getKPIStatus(qDur, KPI_QUEUE);
     
+    // --- 2. LOGIKA LIVE TIMER PROSES (UNLOADING/LOADING) ---
     let uDur = 0; let uStat = {cls:'', txt:'-', isCrit:0};
     if (status === 'unloading') {
-      uDur = f.unloadStartTime ? elapsed(f.unloadStartTime, null) : 0;
-      uStat = getKPIStatus(uDur, KPI_UNLOAD[f.fleetSize] || 60);
+        // Jika sedang bongkar, pakai Waktu Live (Sekarang) - Berjalan naik terus
+        uDur = f.unloadStartTime ? elapsed(f.unloadStartTime, null) : 0;
+        uStat = getKPIStatus(uDur, KPI_UNLOAD[f.fleetSize] || 60);
+    } else if (status === 'done') {
+        // Jika sudah selesai, waktu berhenti
+        uDur = (f.unloadStartTime && f.unloadEndTime) ? elapsed(f.unloadStartTime, f.unloadEndTime) : 0;
+        uStat = getKPIStatus(uDur, KPI_UNLOAD[f.fleetSize] || 60);
     }
     
     if (qStat.isCrit === 2 || uStat.isCrit === 2) violations++;
@@ -1184,10 +1224,10 @@ function processAnalitik() {
   const lokasi = document.getElementById('filter-lokasi-analitik') ? document.getElementById('filter-lokasi-analitik').value : 'all';
  
   currentFilteredData = currentData.filter(row => {
-    if(start && row.arrivalTime) { if(new Date(row.arrivalTime) < new Date(start)) return false; }
+    if(start && row.arrivalTime) { if(getSafeDate(row.arrivalTime) < new Date(start)) return false; }
     if(end && row.arrivalTime) {
       const endDate = new Date(end); endDate.setHours(23,59,59,999);
-      if(new Date(row.arrivalTime) > endDate) return false;
+      if(getSafeDate(row.arrivalTime) > endDate) return false;
     }
     if(origin !== 'all' && row.origin !== origin) return false;
     if(type !== 'all' && row.fleetType !== type) return false;
@@ -1428,7 +1468,7 @@ async function processSmartUpload(inputId) {
         .then(({ data: { text } }) => {
           if(text.trim().length < 2) {
            appendAIChat("AI", "Hmm, teks di gambarnya kurang jelas atau tidak terbaca. Boleh coba foto yang lebih terang? 😅");
-            return;
+             return;
           }
          saveToKnowledgeBase(file.name, text);
           appendAIChat("AI", `✅ Gambar <b>${file.name}</b> berhasil saya baca dan rekam. Mau saya simpulkan isinya atau mencari info spesifik dari foto itu?`);
@@ -1573,7 +1613,14 @@ function checkSession() {
 checkSession();
 
 // Data otomatis ditarik setiap 15 detik untuk memastikannya sinkron dengan HP petugas lain
+// Interval 15 detik ini juga berfungsi memicu renderTV() secara berulang sehingga 
+// Live Timer yang ada di TV akan selalu "berdetak/berjalan naik" tiap detiknya.
 setInterval(fetchDatabase, 15000);
+
+// Perbarui UI layar Dashboard secara otomatis per detik khusus untuk transisi Live Timer
+setInterval(() => {
+  if (document.getElementById('view-tv').classList.contains('active')) renderTV();
+}, 60000);
 </script>
 </body>
 </html>
