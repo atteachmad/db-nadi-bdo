@@ -90,7 +90,7 @@
     
     input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(1); cursor: pointer; }
     [data-theme="light"] input[type="date"]::-webkit-calendar-picker-indicator { filter: none; }
-
+ 
     .mic-icon { position: absolute; right: 12px; bottom: 10px; cursor: pointer; transition: 0.2s; display: flex; align-items: center; justify-content: center; }
     .mic-icon svg { stroke: rgba(239, 68, 68, 0.5); }
     .mic-icon:hover svg, .mic-icon.active svg { stroke: #ef4444; }
@@ -104,7 +104,11 @@
     .fleet-card-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; }
     .fleet-name { font-weight: 700; font-size: 15px; } .fleet-meta { font-size: 12px; color: var(--text2); font-family: 'IBM Plex Mono', monospace; margin-top: 2px; }
     .status-badge { display: inline-flex; align-items: center; padding: 4px 10px; border-radius: 20px; font-family: 'Rajdhani', sans-serif; font-size: 12px; font-weight: 700; text-transform: uppercase; }
-    .s-queuing { background: var(--blue-dim); color: var(--blue); } .s-unloading { background: var(--amber-dim); color: var(--amber); } .s-done { background: var(--green-dim); color: var(--green); }
+    
+    /* PENGGANTIAN CLASS QUEUING MENJADI ANTRIAN */
+    .s-antrian { background: var(--blue-dim); color: var(--blue); } 
+    .s-unloading { background: var(--amber-dim); color: var(--amber); } 
+    .s-done { background: var(--green-dim); color: var(--green); }
     
     .tv-wrap { padding: 20px 24px 32px; min-height: 100vh; min-height: 100dvh; }
     .tv-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 22px; padding-bottom: 16px; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
@@ -316,7 +320,7 @@
     <div class="filter-box">
       <select class="form-select" id="filter-status" onchange="updateCheckerFilter()">
         <option value="all">🚦 Semua Task</option>
-        <option value="queuing" id="opt-queuing">🔄 Mulai Unloading (Antri)</option>
+        <option value="antrian" id="opt-antrian">🔄 Mulai Unloading (Antri)</option>
         <option value="unloading" id="opt-unloading">✅ Selesai Unloading (Proses)</option>
       </select>
     </div>
@@ -349,7 +353,7 @@
  
     <div class="kpi-row">
       <div class="kpi-card kc-total"><div class="kpi-card-label">Total Armada Aktif</div><div class="kpi-card-val" id="kc-total" style="color:var(--text)">0</div></div>
-      <div class="kpi-card kc-queuing"><div class="kpi-card-label" id="lbl-queuing">⏳ Menunggu Unload</div><div class="kpi-card-val" id="kc-queuing" style="color:var(--blue)">0</div></div>
+      <div class="kpi-card kc-antrian"><div class="kpi-card-label" id="lbl-antrian">⏳ Menunggu Unload</div><div class="kpi-card-val" id="kc-antrian" style="color:var(--blue)">0</div></div>
       <div class="kpi-card kc-unloading"><div class="kpi-card-label" id="lbl-unloading">🔄 Sedang Unload</div><div class="kpi-card-val" id="kc-unloading" style="color:var(--amber)">0</div></div>
       <div class="kpi-card kc-violations"><div class="kpi-card-label">🔴 Alarm / Overdue</div><div class="kpi-card-val" id="kc-violations" style="color:var(--red)">0</div></div>
     </div>
@@ -527,7 +531,7 @@
       - v2.0: Locked TV Mode on Refresh, Clean Mobile UI, Burger Integration.<br>
       - v3.0: Dukungan Multi-Lokasi, Integrasi AI Lanjutan, Alarm Progresif, Backend Authentication.<br>
       - v4.0: Optimasi Latensi Tinggi & Struktur Basis Data (Single-Column Array Scan di Backend).<br>
-      - v5.0 (Terbaru): Implementasi Engine Optimistic UI (Nol Delay Lapangan), Syncing Latar Belakang, & Sesi Login Permanen (Keep Me Logged In).</p><br>
+      - v5.0 (Terbaru): Implementasi Engine Optimistic UI (Nol Delay Lapangan), Timezone Patch WIB, & Sesi Login Permanen.</p><br>
     </div>
   </div>
 </div>
@@ -587,9 +591,9 @@
 // 1. INISIALISASI VARIABEL
 // ==========================================
 let currentUser = null;
-let currentTerm = 'Unloading'; // Default Terminologi
+let currentTerm = 'Unloading'; 
  
-const API_URL = 'https://script.google.com/macros/s/AKfycbxDdtdla2-hoRDz66czD4TfbYGdaqpw2vi7jecJPaUisfRwUUgf1qGhIol6_VVUlXxT/exec'; // <-- PASTE LINK PUBLISH APPS SCRIPT DI SINI!
+const API_URL = 'https://script.google.com/macros/s/AKfycbxDdtdla2-hoRDz66czD4TfbYGdaqpw2vi7jecJPaUisfRwUUgf1qGhIol6_VVUlXxT/exec';
 const FLEET_SIZES = { small: ['Blandvan','L300'], medium: ['CDD','CDE','CDEL','Truck'], large: ['Fuso','Wingbox','Tronton'] };
 const KPI_UNLOAD = { small:20, medium:60, large:120 }; 
 const KPI_QUEUE  = 180; 
@@ -631,24 +635,20 @@ async function handleLogin() {
       const user = res.user;
       currentUser = user;
       
-      // SIMPAN SESI LOGIN (KEEP ME LOGGED IN)
       localStorage.setItem('nadi_user_session', JSON.stringify(user));
       
       document.getElementById('sidebar').style.display = 'flex';
       document.getElementById('user-location-badge').textContent = user.location;
       
-      // Dynamic Terminology (Loading vs Unloading)
       currentTerm = (user.location === 'Soekarno Hatta 452') ? 'Loading' : 'Unloading';
       applyTerminology();
       setupOriginDestination(user.location);
       
-      // Hide/Show Menus based on Role
       document.getElementById('menu-security').style.display = ['admin', 'spv', 'security'].includes(user.role) ? 'block' : 'none';
       document.getElementById('menu-checker').style.display = ['admin', 'spv', 'checker'].includes(user.role) ? 'block' : 'none';
       document.getElementById('menu-tv').style.display = 'block';
       document.getElementById('menu-armada').style.display = 'block';
       
-      // Auto-fill names untuk Security
       if (user.role === 'security') document.getElementById('f-secname').value = user.name;
       
       toast(`✅ Selamat datang, ${user.name}!`);
@@ -691,7 +691,6 @@ function setupOriginDestination(location) {
 }
  
 function logout() {
-  // HAPUS SESI LOGIN
   localStorage.removeItem('nadi_user_session');
   
   currentUser = null;
@@ -705,7 +704,7 @@ function applyTerminology() {
   const elSubtitle = document.getElementById('checker-subtitle');
   if(elSubtitle) elSubtitle.textContent = `Daftar antrian dan operasional armada (${currentTerm}).`;
   
-  const elOptQ = document.getElementById('opt-queuing');
+  const elOptQ = document.getElementById('opt-antrian');
   if(elOptQ) elOptQ.textContent = `🔄 Mulai ${currentTerm} (Antri)`;
   
   const elOptU = document.getElementById('opt-unloading');
@@ -714,7 +713,7 @@ function applyTerminology() {
   const elTvHead = document.getElementById('tv-header-sub');
   if(elTvHead) elTvHead.textContent = `Antrian & ${currentTerm} - Real Time`;
   
-  const elLblQ = document.getElementById('lbl-queuing');
+  const elLblQ = document.getElementById('lbl-antrian');
   if(elLblQ) elLblQ.textContent = `⏳ Menunggu ${currentTerm}`;
   
   const elLblU = document.getElementById('lbl-unloading');
@@ -805,7 +804,7 @@ function startDictation(inputId, iconEl) {
 }
  
 // ==========================================
-// 4. LOGIKA DATA, ALARM & FILTER (REVISI LIVE TIMER)
+// 4. LOGIKA DATA, ALARM & FILTER (REVISI LIVE TIMER KEBENTROKAN TIMEZONE)
 // ==========================================
 function playAlarm(level) {
   try {
@@ -815,13 +814,13 @@ function playAlarm(level) {
     const gain = ctx.createGain();
     osc.connect(gain); gain.connect(ctx.destination);
     
-    if (level === 'warning') { // Mendekati 10 menit KPI
+    if (level === 'warning') { 
       osc.frequency.value = 400; gain.gain.setValueAtTime(0.1, ctx.currentTime);
       osc.start(); osc.stop(ctx.currentTime + 0.5);
-    } else if (level === 'critical') { // Lewat KPI Antri
+    } else if (level === 'critical') { 
       osc.frequency.value = 800; osc.type = 'square'; gain.gain.setValueAtTime(0.3, ctx.currentTime);
       osc.start(); osc.stop(ctx.currentTime + 1.0);
-    } else if (level === 'extreme') { // Lewat KPI Unload (Lebih keras/intens)
+    } else if (level === 'extreme') { 
       osc.frequency.value = 1000; osc.type = 'sawtooth'; gain.gain.setValueAtTime(0.6, ctx.currentTime);
       osc.start(); osc.stop(ctx.currentTime + 1.5);
     }
@@ -833,23 +832,27 @@ function playAlarm(level) {
 
 function getSize(type) { for (const [sz, arr] of Object.entries(FLEET_SIZES)) { if (arr.includes(type)) return sz; } return 'small'; }
 
-// SOLUSI BUG TIMER: Sinkronisasi format ISO lokal untuk dikirim ke Google Sheets
+// --- PERBAIKAN 1: MENGGUNAKAN STANDAR UTC MURNI UNTUK BACKEND ---
 function getLocalIso() {
-  const d = new Date();
-  const pad = n => String(n).padStart(2, '0');
-  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}.000Z`;
+  return new Date().toISOString(); 
 }
 
-// SOLUSI BUG TIMER: Menetralisir format 'Z' (UTC) dari backend agar selalu dibaca WIB (Lokal)
-function getSafeDate(isoStr) {
-  if (!isoStr) return null;
-  let cleanIso = isoStr.trim();
-  if (cleanIso.endsWith('Z')) cleanIso = cleanIso.slice(0, -1);
-  const d = new Date(cleanIso);
+// --- PERBAIKAN 2: MENCEGAH SAFARI/BROWSER SALAH MEMBACA FORMAT WIB GOOGLE SHEETS ---
+function getSafeDate(val) {
+  if (!val) return null;
+  let s = String(val).trim();
+  
+  // Jika formatnya murni "YYYY-MM-DD HH:mm:ss" tanpa atribut Z, paksa browser agar membacanya sebagai GMT+07:00 (WIB)
+  if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(s)) {
+    s = s.replace(' ', 'T') + '+07:00';
+  } else if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$/.test(s)) {
+    s = s + '+07:00';
+  }
+  
+  const d = new Date(s);
   return isNaN(d.getTime()) ? null : d;
 }
 
-// Logika Waktu yang sudah kebal terhadap bentrok Timezone
 function elapsed(startIso, endIso) {
   const start = getSafeDate(startIso);
   if (!start) return 0;
@@ -861,12 +864,11 @@ function elapsed(startIso, endIso) {
 function fmtHM(iso) {
   const d = getSafeDate(iso);
   if (!d) return '--:--';
-  // Menggunakan getHours() normal karena waktu sudah dinetralisir menjadi lokal
   return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
 }
  
 async function fetchDatabase() {
-  if (!currentUser) return; // Jangan fetch data kalau belum login
+  if (!currentUser) return; 
   try {
     const response = await fetch(API_URL);
     const data = await response.json();
@@ -912,19 +914,17 @@ function submitArrival() {
   }
   
   const newId = 'ARR-' + Date.now().toString().slice(-6);
-  const nowIso = getLocalIso();
+  const nowIso = getLocalIso(); // --- Sekarang mengambil UTC Standar ---
   
-  // ⚡ OPTIMISTIC UI: Tambah ke lokal & langsung render tanpa nunggu server
   fleets.push({
     id: newId, secName: secName, driverName: driver, plateNumber: plate, fleetType: type, fleetSize: getSize(type),
-    arrivalTime: nowIso, checkerName: '', status: 'queuing', origin: origin, lokasi: currentUser.location, departureTime: null
+    arrivalTime: nowIso, checkerName: '', status: 'antrian', origin: origin, lokasi: currentUser.location, departureTime: null
   });
   
   document.getElementById('f-plate').value = ''; document.getElementById('f-driver').value = ''; document.getElementById('f-origin').value = '';
   renderAll(); 
   toast('⏳ Menyimpan ke server...');
 
-  // ☁️ Push ke Google Sheets secara background
   fetch(API_URL, { 
     method: 'POST', 
     body: JSON.stringify({ 
@@ -971,13 +971,11 @@ function renderSecurityTasks() {
 }
 
 function submitDeparture(id) {
-  // ⚡ OPTIMISTIC UI
   const fIdx = fleets.findIndex(f => f.id === id);
   if(fIdx > -1) fleets[fIdx].departureTime = getLocalIso();
   renderAll();
   toast('⏳ Menyimpan ke server...');
 
-  // ☁️ Background Fetch
   fetch(API_URL, { 
     method: 'POST', 
     body: JSON.stringify({ action: 'updateDeparture', id: id, departureTime: getLocalIso() }) 
@@ -1005,7 +1003,7 @@ function renderChecker() {
   
   el.innerHTML = list.map(f => {
     let content = ''; const status = f.status.toLowerCase();
-    if(status === 'queuing') {
+    if(status === 'antrian') {
       content = `<div class="form-group" style="margin-top:10px;"><input type="text" id="cn-${f.id}" class="form-input" value="${currentUser ? currentUser.name : ''}" readonly style="background:var(--bg); color:var(--amber);"></div>
                  <button class="btn btn-primary" style="margin-top:5px;" onclick="startUnloading('${f.id}')">🔄 MULAI ${currentTerm.toUpperCase()}</button>`;
     } else if(status === 'unloading') {
@@ -1020,7 +1018,6 @@ function startUnloading(id) {
   const cName = document.getElementById(`cn-${id}`).value.trim();
   const nowIso = getLocalIso();
   
-  // ⚡ OPTIMISTIC UI
   const fIdx = fleets.findIndex(f => f.id === id);
   if(fIdx > -1) {
     fleets[fIdx].status = 'unloading';
@@ -1030,7 +1027,6 @@ function startUnloading(id) {
   renderAll();
   toast('⏳ Menyimpan ke server...');
 
-  // ☁️ Background Fetch
   fetch(API_URL, { method: 'POST', body: JSON.stringify({ action: 'updateStatus', id: id, status: 'unloading', checkerName: cName, startTime: nowIso }) })
   .then(() => { toast(`🔄 ${currentTerm} Berhasil Dimulai!`); fetchDatabase(); })
   .catch(err => toast('❌ ' + err, 'err'));
@@ -1039,7 +1035,6 @@ function startUnloading(id) {
 function finishUnloading(id) {
   const nowIso = getLocalIso();
   
-  // ⚡ OPTIMISTIC UI
   const fIdx = fleets.findIndex(f => f.id === id);
   if(fIdx > -1) {
     fleets[fIdx].status = 'done';
@@ -1048,7 +1043,6 @@ function finishUnloading(id) {
   renderAll();
   toast('⏳ Menyimpan ke server...');
 
-  // ☁️ Background Fetch
   fetch(API_URL, { method: 'POST', body: JSON.stringify({ action: 'updateStatus', id: id, status: 'done', endTime: nowIso }) })
   .then(() => { toast(`✅ ${currentTerm} Selesai!`); fetchDatabase(); })
   .catch(err => toast('❌ ' + err, 'err'));
@@ -1081,11 +1075,9 @@ function renderTV() {
     
     // --- 1. LOGIKA LIVE TIMER KEDATANGAN / ANTRIAN ---
     let qDur = 0;
-    if (status === 'queuing') {
-        // Jika masih antri, pakai Waktu Live (Sekarang) - Berjalan naik terus tiap menit
+    if (status === 'antrian') {
         qDur = f.arrivalTime ? elapsed(f.arrivalTime, null) : 0;
     } else {
-        // Jika sudah diklik mulai unloading/done, waktu antrian berhenti (terkunci otomatis)
         qDur = f.arrivalTime && f.unloadStartTime ? elapsed(f.arrivalTime, f.unloadStartTime) : 0;
     }
     const qStat = getKPIStatus(qDur, KPI_QUEUE);
@@ -1093,19 +1085,16 @@ function renderTV() {
     // --- 2. LOGIKA LIVE TIMER PROSES (UNLOADING/LOADING) ---
     let uDur = 0; let uStat = {cls:'', txt:'-', isCrit:0};
     if (status === 'unloading') {
-        // Jika sedang bongkar, pakai Waktu Live (Sekarang) - Berjalan naik terus
         uDur = f.unloadStartTime ? elapsed(f.unloadStartTime, null) : 0;
         uStat = getKPIStatus(uDur, KPI_UNLOAD[f.fleetSize] || 60);
     } else if (status === 'done') {
-        // Jika sudah selesai, waktu berhenti
         uDur = (f.unloadStartTime && f.unloadEndTime) ? elapsed(f.unloadStartTime, f.unloadEndTime) : 0;
         uStat = getKPIStatus(uDur, KPI_UNLOAD[f.fleetSize] || 60);
     }
     
     if (qStat.isCrit === 2 || uStat.isCrit === 2) violations++;
     
-    // Penentuan Alarm
-    if (status === 'queuing') {
+    if (status === 'antrian') {
         if (qStat.isCrit === 2) alarmToPlay = 'critical'; 
         else if (qStat.isCrit === 1 && alarmToPlay !== 'critical' && alarmToPlay !== 'extreme') alarmToPlay = 'warning';
     } else if (status === 'unloading') {
@@ -1122,7 +1111,7 @@ function renderTV() {
  enrichedFleets.sort((a, b) => b.priorityScore - a.priorityScore);
   
  if(document.getElementById('kc-total')) document.getElementById('kc-total').textContent = enrichedFleets.length;
- if(document.getElementById('kc-queuing')) document.getElementById('kc-queuing').textContent = enrichedFleets.filter(f=>f.status==='queuing').length;
+ if(document.getElementById('kc-antrian')) document.getElementById('kc-antrian').textContent = enrichedFleets.filter(f=>f.status==='antrian').length;
  if(document.getElementById('kc-unloading')) document.getElementById('kc-unloading').textContent = enrichedFleets.filter(f=>f.status==='unloading').length;
  if(document.getElementById('kc-violations')) document.getElementById('kc-violations').textContent = violations;
  if(document.getElementById('ind-lewat-kpi')) document.getElementById('ind-lewat-kpi').textContent = violations;
@@ -1256,7 +1245,7 @@ function generateAI(data) {
   let worstAnomalies = [];
  
   data.forEach(r => {
-    let qDur = r.arrivalTime && r.unloadStartTime ? elapsed(r.arrivalTime, r.unloadStartTime) : 0;
+    let qDur = r.arrivalTime && r.unloadStartTime ? elapsed(r.arrivalTime, r.unloadStartTime) : (r.arrivalTime ? elapsed(r.arrivalTime, null) : 0);
     let uDur = r.unloadStartTime && r.unloadEndTime ? elapsed(r.unloadStartTime, r.unloadEndTime) : 0;
     
     totalQueueTime += qDur;
@@ -1335,7 +1324,6 @@ function updateAnalitikCharts(data) {
     }
   });
  
-  // 1. CHART KPI
   const ctxKPI = document.getElementById('chartKPI');
   if(ctxKPI) {
     if(chartKPI) chartKPI.destroy();
@@ -1349,7 +1337,6 @@ function updateAnalitikCharts(data) {
     });
   }
  
-  // 2. CHART ORIGIN
   const ctxOrigin = document.getElementById('chartOrigin');
   if(ctxOrigin) {
     if(chartOrigin) chartOrigin.destroy();
@@ -1379,7 +1366,6 @@ function updateAnalitikCharts(data) {
     });
   }
  
-  // 3. CHART CHECKER
   const ctxChecker = document.getElementById('chartChecker');
   if(ctxChecker) {
     if(chartChecker) chartChecker.destroy();
@@ -1609,15 +1595,9 @@ function checkSession() {
   }
 }
 
-// Jalankan pengecekan sesi saat web pertama kali dibuka
 checkSession();
-
-// Data otomatis ditarik setiap 15 detik untuk memastikannya sinkron dengan HP petugas lain
-// Interval 15 detik ini juga berfungsi memicu renderTV() secara berulang sehingga 
-// Live Timer yang ada di TV akan selalu "berdetak/berjalan naik" tiap detiknya.
 setInterval(fetchDatabase, 15000);
 
-// Perbarui UI layar Dashboard secara otomatis per detik khusus untuk transisi Live Timer
 setInterval(() => {
   if (document.getElementById('view-tv').classList.contains('active')) renderTV();
 }, 60000);
