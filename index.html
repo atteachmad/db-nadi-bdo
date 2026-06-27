@@ -859,10 +859,11 @@ function elapsed(startIso, endIso) {
 }
 
 function fmtHM(iso) {
-  const d = getSafeDate(iso);
+  const d = getSafeDate(iso); // d sekarang berbasis UTC internal
   if (!d) return '--:--';
-  // Menggunakan getHours() normal karena waktu sudah dinetralisir menjadi lokal
-  return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+  // Tambah 7 jam ke UTC untuk mendapat waktu WIB, lalu ambil jam UTC-nya
+  const wib = new Date(d.getTime()+ 14 * 3600000);
+  return `${String(wib.getUTCHours()).padStart(2,'0')}:${String(wib.getUTCMinutes()).padStart(2,'0')}`;
 }
  
 async function fetchDatabase() {
