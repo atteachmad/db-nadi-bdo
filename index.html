@@ -268,7 +268,7 @@
     </div>
     <div class="form-group">
       <label class="form-label">No. Polisi</label>
-      <input class="form-input" id="f-plate" type="text" placeholder="B 1234 XY" style="text-transform:uppercase" />
+      <input class="form-input" id="f-plate" type="text" placeholder="B 1234 XY" style="text-transform:uppercase" oninput="formatPlat(this)" />
       <span class="mic-icon" onclick="startDictation('f-plate', this)">
         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line></svg>
       </span>
@@ -291,8 +291,9 @@
     
     <div class="form-group">
       <label class="form-label" id="label-origin">Origin (Asal Armada)</label>
-      <input type="text" id="f-origin" class="form-input" list="dl-origin" placeholder="Ketik manual atau pilih..." style="text-transform:uppercase" autocomplete="off" />
+      <input type="text" id="f-origin" class="form-input" list="dl-origin" placeholder="Ketik manual atau pilih..." style="text-transform:uppercase" autocomplete="off" onchange="handleMultiDest(this)" onkeydown="if(event.key === 'Enter') { event.preventDefault(); handleMultiDest(this); }" />
       <datalist id="dl-origin"></datalist>
+      <div id="dest-tags" style="display:flex; flex-wrap:wrap; gap:5px; margin-top:8px;"></div>
     </div>
     
     <button class="btn btn-primary" onclick="submitArrival()">✅ Catat Kedatangan</button>
@@ -795,7 +796,10 @@ function startDictation(inputId, iconEl) {
     iconEl.classList.add("active"); toast("Mendengarkan... Silakan bicara", "ok");
     recognition.start();
     recognition.onresult = function(e) {
-      document.getElementById(inputId).value = e.results[0][0].transcript; recognition.stop();
+      const el = document.getElementById(inputId);
+      el.value = e.results[0][0].transcript; 
+      if(inputId === 'f-plate') formatPlat(el); // Format plat otomatis via Voice
+      recognition.stop();
       iconEl.classList.remove("active"); if(inputId === 'search-fleet') updateCheckerFilter();
     };
     recognition.onerror = function(e) {
@@ -807,6 +811,53 @@ function startDictation(inputId, iconEl) {
 // ==========================================
 // 4. LOGIKA DATA, ALARM & FILTER (REVISI LIVE TIMER)
 // ==========================================
+// --- FITUR BARU: AUTO FORMAT SPASI PLAT NOMOR ---
+function formatPlat(input) {
+  // Membersihkan input selain abjad dan angka
+  let val = input.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+  // Memberikan spasi di antara pergantian huruf ke angka, dan angka ke huruf
+  val = val.replace(/([A-Z]+)([0-9]+)/g, '$1 $2').replace(/([0-9]+)([A-Z]+)/g, '$1 $2');
+  input.value = val;
+}
+
+// --- FITUR BARU: MULTI-DESTINASI (MAKS 6) ---
+let selectedDestinations = [];
+
+function handleMultiDest(input) {
+  const isSoetta = currentUser && currentUser.location === 'Soekarno Hatta 452';
+  if (!isSoetta) return; // Berlaku hanya untuk Soetta (Destinasi)
+  
+  let val = input.value.trim().toUpperCase();
+  if (!val) return;
+  
+  if (selectedDestinations.length >= 6) {
+    toast('❌ Maksimal 6 Destinasi!', 'err');
+    input.value = '';
+    return;
+  }
+  
+  if (!selectedDestinations.includes(val)) {
+    selectedDestinations.push(val);
+    renderDestTags();
+  }
+  input.value = ''; // Kosongkan agar user bisa tambah lagi
+}
+
+function renderDestTags() {
+  const container = document.getElementById('dest-tags');
+  if (!container) return;
+  container.innerHTML = selectedDestinations.map((d, i) => 
+    `<span style="background:var(--blue-dim); color:var(--blue); padding:4px 8px; border-radius:4px; font-size:12px; display:inline-flex; align-items:center; gap:5px; border: 1px solid rgba(56,189,248,0.3);">
+        ${d} <i class="fa-solid fa-xmark" style="cursor:pointer;" onclick="removeDest(${i})"></i>
+     </span>`
+  ).join('');
+}
+
+function removeDest(idx) {
+  selectedDestinations.splice(idx, 1);
+  renderDestTags();
+}
+
 function playAlarm(level) {
   try {
     if (currentOscillator) return; 
@@ -833,37 +884,48 @@ function playAlarm(level) {
 
 function getSize(type) { for (const [sz, arr] of Object.entries(FLEET_SIZES)) { if (arr.includes(type)) return sz; } return 'small'; }
 
-// SOLUSI BUG TIMER: Sinkronisasi format ISO lokal untuk dikirim ke Google Sheets
+// SOLUSI BUG TIMER: Sinkronisasi format ISO lokal murni (WIB +07:00)
 function getLocalIso() {
-  const d = new Date();
+  const now = new Date();
+  const d = new Date(now.toLocaleString("en-US", {timeZone: "Asia/Jakarta"}));
   const pad = n => String(n).padStart(2, '0');
-  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}.000Z`;
+  // Menambahkan +07:00 agar Google Sheets dan Browser sepakat ini adalah WIB
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}+07:00`;
 }
 
-// SOLUSI BUG TIMER: Menetralisir format 'Z' (UTC) dari backend agar selalu dibaca WIB (Lokal)
+// SOLUSI BUG TIMER: Membaca waktu dari DB secara presisi
 function getSafeDate(isoStr) {
   if (!isoStr) return null;
-  let cleanIso = isoStr.trim();
-  if (cleanIso.endsWith('Z')) cleanIso = cleanIso.slice(0, -1);
-  const d = new Date(cleanIso);
+  let clean = isoStr.trim();
+  // Jika teks dari DB tidak punya penanda zona waktu (Z atau +), paksa jadi WIB (+07:00)
+  if (!clean.endsWith('Z') && !clean.includes('+') && clean.includes('T')) {
+    clean += '+07:00';
+  }
+  const d = new Date(clean);
   return isNaN(d.getTime()) ? null : d;
 }
 
-// Logika Waktu yang sudah kebal terhadap bentrok Timezone
+// SOLUSI BUG TIMER: Menghitung selisih (KPI) menggunakan Epoch mutlak
 function elapsed(startIso, endIso) {
   const start = getSafeDate(startIso);
   if (!start) return 0;
   
-  const end = getSafeDate(endIso) || new Date();
-  return Math.max(0, Math.floor((end - start) / 60000));
+  const end = endIso ? getSafeDate(endIso) : new Date();
+  // .getTime() mengembalikan nilai absolut, 100% kebal terhadap bentrok Timezone
+  return Math.max(0, Math.floor((end.getTime() - start.getTime()) / 60000));
 }
 
+// SOLUSI BUG TIMER: Memaksa Tampilan Jam selalu WIB (Asia/Jakarta) apapun setingan Layar
 function fmtHM(iso) {
-  const d = getSafeDate(iso); // d sekarang berbasis UTC internal
+  const d = getSafeDate(iso); 
   if (!d) return '--:--';
-  // Tambah 7 jam ke UTC untuk mendapat waktu WIB, lalu ambil jam UTC-nya
-  const wib = new Date(d.getTime()+ 14 * 3600000);
-  return `${String(wib.getUTCHours()).padStart(2,'0')}:${String(wib.getUTCMinutes()).padStart(2,'0')}`;
+  // Konversi absolut ke string jam WIB
+  return d.toLocaleTimeString('id-ID', { 
+    timeZone: 'Asia/Jakarta', 
+    hour: '2-digit', 
+    minute: '2-digit',
+    hour12: false
+  }).replace('.', ':');
 }
  
 async function fetchDatabase() {
@@ -902,8 +964,18 @@ function submitArrival() {
   const driver = document.getElementById('f-driver').value.trim(); 
   const plate = document.getElementById('f-plate').value.trim().toUpperCase(); 
   const type = document.getElementById('f-type').value;
-  const origin = document.getElementById('f-origin').value.trim().toUpperCase();
- 
+  const isSoetta = currentUser && currentUser.location === 'Soekarno Hatta 452';
+  
+  let origin = document.getElementById('f-origin').value.trim().toUpperCase();
+
+  // Penggabungan array multi-destinasi khusus Soetta
+  if (isSoetta) {
+    if (origin && !selectedDestinations.includes(origin) && selectedDestinations.length < 6) {
+       selectedDestinations.push(origin);
+    }
+    origin = selectedDestinations.join(', ');
+  }
+
   if (!secName || !driver || !plate || !origin) { toast('❌ Semua kolom wajib diisi!','err'); return; }
   
   const isDuplicate = fleets.some(f => f.plateNumber === plate && f.status !== 'done' && f.lokasi === currentUser.location);
@@ -921,7 +993,14 @@ function submitArrival() {
     arrivalTime: nowIso, checkerName: '', status: 'antrian', origin: origin, lokasi: currentUser.location, departureTime: null
   });
   
-  document.getElementById('f-plate').value = ''; document.getElementById('f-driver').value = ''; document.getElementById('f-origin').value = '';
+  document.getElementById('f-plate').value = ''; 
+  document.getElementById('f-driver').value = ''; 
+  document.getElementById('f-origin').value = '';
+  
+  // Reset Data Tags Destinasi
+  selectedDestinations = [];
+  renderDestTags();
+
   renderAll(); 
   toast('⏳ Menyimpan ke server...');
 
@@ -1613,9 +1692,7 @@ function checkSession() {
 // Jalankan pengecekan sesi saat web pertama kali dibuka
 checkSession();
 
-// Data otomatis ditarik setiap 15 detik untuk memastikannya sinkron dengan HP petugas lain
-// Interval 15 detik ini juga berfungsi memicu renderTV() secara berulang sehingga 
-// Live Timer yang ada di TV akan selalu "berdetak/berjalan naik" tiap detiknya.
+// Data otomatis ditarik setiap 15 detik
 setInterval(fetchDatabase, 15000);
 
 // Perbarui UI layar Dashboard secara otomatis per detik khusus untuk transisi Live Timer
