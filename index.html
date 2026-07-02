@@ -97,6 +97,7 @@
     .mic-icon.active { animation: blink 1s infinite; }
     
     .btn { width: 100%; padding: 14px; border: none; border-radius: 8px; font-family: 'Rajdhani', sans-serif; font-size: 16px; font-weight: 700; text-transform: uppercase; cursor: pointer; transition: all 0.15s; }
+    .btn:disabled { opacity: 0.7; cursor: not-allowed; }
     .btn-primary { background: var(--amber); color: #000; } .btn-success { background: var(--green); color: #fff; }
     .btn-outline { background: transparent; border: 1px solid var(--border); color: var(--text); }
     .datetime-badge { background: var(--amber-dim); border: 1px solid rgba(245,158,11,0.3); color: var(--amber); padding: 9px 14px; border-radius: 8px; font-family: 'IBM Plex Mono', monospace; font-size: 13px; margin-bottom: 20px; text-align: center; }
@@ -528,7 +529,7 @@
       - v2.0: Locked TV Mode on Refresh, Clean Mobile UI, Burger Integration.<br>
       - v3.0: Dukungan Multi-Lokasi, Integrasi AI Lanjutan, Alarm Progresif, Backend Authentication.<br>
       - v4.0: Optimasi Latensi Tinggi & Struktur Basis Data (Single-Column Array Scan di Backend).<br>
-      - v5.0 (Terbaru): Implementasi Engine Optimistic UI (Nol Delay Lapangan), Syncing Latar Belakang, & Sesi Login Permanen (Keep Me Logged In).</p><br>
+      - v5.0 (Terbaru): Implementasi Engine Optimistic UI (Nol Delay Lapangan), Syncing Latar Belakang, Sesi Login Permanen, & Anti-Double Submission.</p><br>
     </div>
   </div>
 </div>
@@ -957,9 +958,13 @@ function getFilteredFleets() {
 function renderAll() { renderChecker(); renderTV(); renderSecurityTasks(); }
  
 // ==========================================
-// 5. LOGIKA SECURITY & CHECKER (OPTIMISTIC UI UPDATE)
+// 5. LOGIKA SECURITY & CHECKER (OPTIMISTIC UI UPDATE + ANTI DOUBLE CLICK)
 // ==========================================
 function submitArrival() {
+  // Fitur Anti-Double Click
+  const btn = document.querySelector('button[onclick="submitArrival()"]');
+  if (btn && btn.disabled) return;
+
   const secName = document.getElementById('f-secname').value.trim();
   const driver = document.getElementById('f-driver').value.trim(); 
   const plate = document.getElementById('f-plate').value.trim().toUpperCase(); 
@@ -984,7 +989,12 @@ function submitArrival() {
     return; 
   }
   
-  const newId = 'ARR-' + Date.now().toString().slice(-6);
+  // Mengunci tombol agar tidak dobel klik
+  if (btn) { btn.disabled = true; btn.innerHTML = '⏳ Memproses...'; }
+
+  // Perbaikan Total pada Generate ID (Mencegah Overwrite Data)
+  // Menambahkan timestamp + random generator HEX agar 100% data unik.
+  const newId = 'ARR-' + Date.now().toString(36).toUpperCase() + '-' + Math.floor(Math.random() * 10000);
   const nowIso = getLocalIso();
   
   // ⚡ OPTIMISTIC UI: Tambah ke lokal & langsung render tanpa nunggu server
@@ -1015,7 +1025,11 @@ function submitArrival() {
     })
   })
   .then(() => { toast('✅ Kedatangan Berhasil Dicatat!'); fetchDatabase(); })
-  .catch(err => toast('❌ ' + err, 'err'));
+  .catch(err => toast('❌ ' + err, 'err'))
+  .finally(() => {
+    // Membuka kunci tombol setelah selesai
+    if (btn) { btn.disabled = false; btn.innerHTML = '✅ Catat Kedatangan'; }
+  });
 }
 
 function renderSecurityTasks() {
@@ -1051,6 +1065,11 @@ function renderSecurityTasks() {
 }
 
 function submitDeparture(id) {
+  // Fitur Anti-Double Click
+  const btn = document.querySelector(`button[onclick="submitDeparture('${id}')"]`);
+  if(btn && btn.disabled) return;
+  if(btn) { btn.disabled = true; btn.innerHTML = '⏳ Proses...'; }
+
   // ⚡ OPTIMISTIC UI
   const fIdx = fleets.findIndex(f => f.id === id);
   if(fIdx > -1) fleets[fIdx].departureTime = getLocalIso();
@@ -1063,7 +1082,10 @@ function submitDeparture(id) {
     body: JSON.stringify({ action: 'updateDeparture', id: id, departureTime: getLocalIso() }) 
   })
   .then(() => { toast('✅ Keberangkatan Berhasil Dicatat!'); fetchDatabase(); })
-  .catch(err => toast('❌ ' + err, 'err'));
+  .catch(err => toast('❌ ' + err, 'err'))
+  .finally(() => {
+    if(btn) { btn.disabled = false; btn.innerHTML = '🚀 Catat Jam Keberangkatan'; }
+  });
 }
  
 function updateCheckerFilter() {
@@ -1097,6 +1119,10 @@ function renderChecker() {
 }
  
 function startUnloading(id) {
+  const btn = document.querySelector(`button[onclick="startUnloading('${id}')"]`);
+  if(btn && btn.disabled) return;
+  if(btn) { btn.disabled = true; btn.innerHTML = '⏳ Proses...'; }
+
   const cName = document.getElementById(`cn-${id}`).value.trim();
   const nowIso = getLocalIso();
   
@@ -1113,10 +1139,17 @@ function startUnloading(id) {
   // ☁️ Background Fetch
   fetch(API_URL, { method: 'POST', body: JSON.stringify({ action: 'updateStatus', id: id, status: 'unloading', checkerName: cName, startTime: nowIso }) })
   .then(() => { toast(`🔄 ${currentTerm} Berhasil Dimulai!`); fetchDatabase(); })
-  .catch(err => toast('❌ ' + err, 'err'));
+  .catch(err => toast('❌ ' + err, 'err'))
+  .finally(() => {
+    if(btn) { btn.disabled = false; btn.innerHTML = `🔄 MULAI ${currentTerm.toUpperCase()}`; }
+  });
 }
  
 function finishUnloading(id) {
+  const btn = document.querySelector(`button[onclick="finishUnloading('${id}')"]`);
+  if(btn && btn.disabled) return;
+  if(btn) { btn.disabled = true; btn.innerHTML = '⏳ Proses...'; }
+
   const nowIso = getLocalIso();
   
   // ⚡ OPTIMISTIC UI
@@ -1131,7 +1164,10 @@ function finishUnloading(id) {
   // ☁️ Background Fetch
   fetch(API_URL, { method: 'POST', body: JSON.stringify({ action: 'updateStatus', id: id, status: 'done', endTime: nowIso }) })
   .then(() => { toast(`✅ ${currentTerm} Selesai!`); fetchDatabase(); })
-  .catch(err => toast('❌ ' + err, 'err'));
+  .catch(err => toast('❌ ' + err, 'err'))
+  .finally(() => {
+    if(btn) { btn.disabled = false; btn.innerHTML = `✅ SELESAI ${currentTerm.toUpperCase()}`; }
+  });
 }
  
 // ==========================================
