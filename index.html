@@ -285,7 +285,7 @@
       <label class="form-label">Tipe Armada</label>
       <select class="form-select" id="f-type">
         <optgroup label="Small (KPI Unload: 20m)"><option value="Blandvan">Blandvan</option><option value="L300">L300</option></optgroup>
-        <optgroup label="Medium (KPI Unload: 60m)"><option value="CDD">CDD</option><option value="CDE">CDE</option><option value="CDEL">CDEL</option><option value="CDDL">CDDL</option><option value="Engkel">Engkel</option><option value="Truck">Truck</option></optgroup>
+        <optgroup label="Medium (KPI Unload: 60m)"><option value="CDD">CDD</option><option value="CDE">CDE</option><option value="CDEL">CDEL</option><option value="Truck">Truck</option></optgroup>
         <optgroup label="Large (KPI Unload: 120m)"><option value="Fuso">Fuso</option><option value="Wingbox">Wingbox</option><option value="Tronton">Tronton</option></optgroup>
       </select>
     </div>
@@ -592,7 +592,7 @@ let currentUser = null;
 let currentTerm = 'Unloading'; // Default Terminologi
  
 const API_URL = 'https://script.google.com/macros/s/AKfycbxDdtdla2-hoRDz66czD4TfbYGdaqpw2vi7jecJPaUisfRwUUgf1qGhIol6_VVUlXxT/exec'; // <-- PASTE LINK PUBLISH APPS SCRIPT DI SINI!
-const FLEET_SIZES = { small: ['Blandvan','L300'], medium: ['CDD','CDE','CDEL','CDDL','Engkel','Truck'], large: ['Fuso','Wingbox','Tronton'] };
+const FLEET_SIZES = { small: ['Blandvan','L300'], medium: ['CDD','CDE','CDEL','Truck'], large: ['Fuso','Wingbox','Tronton'] };
 const KPI_UNLOAD = { small:20, medium:60, large:120 }; 
 const KPI_QUEUE  = 180; 
  
