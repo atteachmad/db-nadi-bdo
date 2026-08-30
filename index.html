@@ -290,10 +290,11 @@
       </select>
     </div>
     
-    <div class="form-group">
+      <div class="form-group">
       <label class="form-label" id="label-origin">Origin (Asal Armada)</label>
-      <input type="text" id="f-origin" class="form-input" list="dl-origin" placeholder="Ketik manual atau pilih..." style="text-transform:uppercase" autocomplete="off" onchange="handleMultiDest(this)" onkeydown="if(event.key === 'Enter') { event.preventDefault(); handleMultiDest(this); }" />
-      <datalist id="dl-origin"></datalist>
+      <select id="f-origin" class="form-select" onchange="handleMultiDest(this)">
+        <option value="" disabled selected>Pilih Lokasi...</option>
+      </select>
       <div id="dest-tags" style="display:flex; flex-wrap:wrap; gap:5px; margin-top:8px;"></div>
     </div>
     
@@ -674,22 +675,22 @@ async function handleLogin() {
 function setupOriginDestination(location) {
   const isSoetta = location === 'Soekarno Hatta 452';
   const label = document.getElementById('label-origin');
-  const dl = document.getElementById('dl-origin');
   const fOrigin = document.getElementById('f-origin');
   
-  if(!label || !dl) return;
- 
+  if(!label || !fOrigin) return;
+
+  let optionsHTML = '<option value="" disabled selected>Pilih Lokasi...</option>';
+
   if (isSoetta) {
      label.textContent = "DESTINATION (TUJUAN ARMADA)";
-     fOrigin.placeholder = "Pilih / Ketik Tujuan...";
      const dests = ['BEKASI (BKI)', 'SUKABUMI (SMI)', 'CIKARANG (CKR)', 'BOGOR (BOO)', 'CILACAP (CXP)', 'SEMARANG (SRG)', 'YOGYAKARTA (JOG)', 'SURABAYA GATEWAY (SUX)', 'DEPOK (DPK)', 'CILEGON (CLG)', 'CIREBON (CBN)', 'WANGON (WGX)', 'SURAKARTA (SOC)', 'TANGERANG (TGR)', 'JAKARTA (CGK)', 'KARAWANG (KRW)', 'MAGELANG (MGL)', 'SURABAYA (SUB)', 'TEGAL (TGL)', 'MADIUN (MDN)', 'SIDOARJO (SDA)', 'OTHER'];
-     dl.innerHTML = dests.map(d => `<option value="${d}">`).join('');
+     optionsHTML += dests.map(d => `<option value="${d}">${d}</option>`).join('');
   } else {
      label.textContent = "ORIGIN (ASAL ARMADA)";
-     fOrigin.placeholder = "Pilih / Ketik Asal...";
      const origins = ['SEMARANG (SRG)','BOGOR (BOO)','JAKARTA (CGK)','SUMEDANG (SMG)','BEKASI (BKI)','SOREANG (SOR)','TASIKMALAYA (TSM)','PURWAKARTA (PWT)','SOETA 452 (SOETTA)','CIKARANG (CKR)','TANGERANG (TGR)','SURABAYA (SUB)','KARAWANG (KRW)','WANGON (WGX)','DEPOK (DPK)','YOGYAKARTA (JOG)','SUKABUMI (SMI)','SOLO (SOLO)','CIMAREME (CMM)','MADIUN (MADIUN)','TANJUNG PINANG (TNJ)','TRISINDO','RODA JAYA','MADIUN (MDN)','CILACAP (CXP)','MAGELANG (MGL)','NARIPAN','RANCAEKEK (RCK)','OTHER'];
-     dl.innerHTML = origins.map(o => `<option value="${o}">`).join('');
+     optionsHTML += origins.map(o => `<option value="${o}">${o}</option>`).join('');
   }
+  fOrigin.innerHTML = optionsHTML;
 }
  
 function logout() {
@@ -825,14 +826,11 @@ function formatPlat(input) {
 let selectedDestinations = [];
 
 function handleMultiDest(input) {
-  const isSoetta = currentUser && currentUser.location === 'Soekarno Hatta 452';
-  if (!isSoetta) return; // Berlaku hanya untuk Soetta (Destinasi)
-  
   let val = input.value.trim().toUpperCase();
   if (!val) return;
   
   if (selectedDestinations.length >= 6) {
-    toast('❌ Maksimal 6 Destinasi!', 'err');
+    toast('❌ Maksimal 6 Lokasi!', 'err');
     input.value = '';
     return;
   }
@@ -841,7 +839,7 @@ function handleMultiDest(input) {
     selectedDestinations.push(val);
     renderDestTags();
   }
-  input.value = ''; // Kosongkan agar user bisa tambah lagi
+  input.value = ''; // Kembalikan dropdown ke posisi 'Pilih Lokasi...'
 }
 
 function renderDestTags() {
@@ -969,20 +967,17 @@ function submitArrival() {
   const driver = document.getElementById('f-driver').value.trim(); 
   const plate = document.getElementById('f-plate').value.trim().toUpperCase(); 
   const type = document.getElementById('f-type').value;
-  const isSoetta = currentUser && currentUser.location === 'Soekarno Hatta 452';
   
-  let origin = document.getElementById('f-origin').value.trim().toUpperCase();
+  // Ambil data Origin/Destinasi MURNI dari tags yang dipilih
+  let origin = selectedDestinations.join(', ');
 
-  // Penggabungan array multi-destinasi khusus Soetta
-  if (isSoetta) {
-    if (origin && !selectedDestinations.includes(origin) && selectedDestinations.length < 6) {
-       selectedDestinations.push(origin);
-    }
-    origin = selectedDestinations.join(', ');
+  // Validasi form kosong
+  if (!secName || !driver || !plate || !origin) { 
+    toast('❌ Semua kolom wajib diisi! (Pilih minimal 1 Origin/Tujuan)', 'err'); 
+    return; 
   }
-
-  if (!secName || !driver || !plate || !origin) { toast('❌ Semua kolom wajib diisi!','err'); return; }
   
+  // Validasi duplikat di Frontend lokal
   const isDuplicate = fleets.some(f => f.plateNumber === plate && f.status !== 'done' && f.lokasi === currentUser.location);
   if(isDuplicate) { 
     toast('❌ Armada Plat Nomor ini sedang aktif di sistem antrian!', 'err'); 
@@ -993,7 +988,7 @@ function submitArrival() {
   if (btn) { btn.disabled = true; btn.innerHTML = '⏳ Memproses...'; }
 
   // Perbaikan Total pada Generate ID (Mencegah Overwrite Data)
-  // Menambahkan timestamp + random generator HEX agar 100% data unik.
+  // Menambahkan timestamp + random generator HEX agar 100% data unik[cite: 2].
   const newId = 'ARR-' + Date.now().toString(36).toUpperCase() + '-' + Math.floor(Math.random() * 10000);
   const nowIso = getLocalIso();
   
@@ -1014,7 +1009,7 @@ function submitArrival() {
   renderAll(); 
   toast('⏳ Menyimpan ke server...');
 
-  // ☁️ Push ke Google Sheets secara background
+// ☁️ Push ke Google Sheets secara background
   fetch(API_URL, { 
     method: 'POST', 
     body: JSON.stringify({ 
@@ -1024,7 +1019,18 @@ function submitArrival() {
       lokasi: currentUser.location
     })
   })
-  .then(() => { toast('✅ Kedatangan Berhasil Dicatat!'); fetchDatabase(); })
+  .then(res => res.json())
+  .then(data => {
+    if (data.status === 'error') {
+       toast('❌ ' + data.message, 'err');
+       // Rollback Optimistic UI: Hapus data ganda dari layar lokal karena ditolak server
+       fleets = fleets.filter(f => f.id !== newId);
+       renderAll();
+    } else {
+       toast('✅ Kedatangan Berhasil Dicatat!'); 
+       fetchDatabase(); 
+    }
+  })
   .catch(err => toast('❌ ' + err, 'err'))
   .finally(() => {
     // Membuka kunci tombol setelah selesai
