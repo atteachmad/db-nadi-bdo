@@ -601,6 +601,14 @@ let fleets = [];
 let checkerSearchTerm = '';
 let checkerStatusFilter = 'all';
 let currentOscillator = null;
+
+// Satu nopol tidak bisa dikirim dua kali dari perangkat yang sama
+// sebelum backend menjawab; tetapi armada lain tetap bisa diinput.
+const pendingArrivals = new Set();
+
+// Cegah request GET dashboard menumpuk.
+let dbFetchInFlight = null;
+let dbFetchQueued = false;
  
 let chartKPI, chartOrigin, chartChecker;
 let currentFilteredData = [];
@@ -927,26 +935,62 @@ function fmtHM(iso) {
   }).replace('.', ':');
 }
  
-async function fetchDatabase() {
-  if (!currentUser) return; // Jangan fetch data kalau belum login
-  try {
-    const response = await fetch(API_URL);
-    const data = await response.json();
-    fleets = data.map(row => ({
-      id: row.id, secName: row.securityname, driverName: row.driver, plateNumber: row.plate, fleetType: row.type, fleetSize: row.size,
-      arrivalTime: row.arrivaltime, checkerName: row.checkername, status: row.status, 
-      unloadStartTime: row.unloadstart || null, unloadEndTime: row.unloadend || null, 
-      origin: row['origin/destination'] || row.origin || row.origindestination, 
-      lokasi: row.lokasi || 'Gedebage', 
-      departureTime: row.departuretime || null
-    }));
-    
-    populateFilters();
-    if(document.getElementById('view-armada').classList.contains('active')) processAnalitik();
-    renderAll();
-  } catch (e) { console.error("Koneksi terputus.", e); }
+async function fetchDatabase(force = false) {
+  if (!currentUser) return;
+
+  // Polling dan refresh manual tidak boleh membuat request GET menumpuk.
+  if (dbFetchInFlight) {
+    if (force) dbFetchQueued = true;
+    return dbFetchInFlight;
+  }
+
+  dbFetchInFlight = (async () => {
+    try {
+      const response = await fetch(API_URL, {
+        method: 'GET',
+        cache: 'no-store'
+      });
+
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+      const data = await response.json();
+
+      fleets = data.map(row => ({
+        id: row.id,
+        secName: row.securityname,
+        driverName: row.driver,
+        plateNumber: row.plate,
+        fleetType: row.type,
+        fleetSize: row.size,
+        arrivalTime: row.arrivaltime,
+        checkerName: row.checkername,
+        status: row.status,
+        unloadStartTime: row.unloadstart || null,
+        unloadEndTime: row.unloadend || null,
+        origin: row['origin/destination'] || row.origin || row.origindestination,
+        lokasi: row.lokasi || 'Gedebage',
+        departureTime: row.departuretime || null
+      }));
+
+      populateFilters();
+      if (document.getElementById('view-armada').classList.contains('active')) processAnalitik();
+      renderAll();
+
+    } catch (e) {
+      console.error("Koneksi terputus.", e);
+    } finally {
+      dbFetchInFlight = null;
+
+      if (dbFetchQueued && currentUser) {
+        dbFetchQueued = false;
+        fetchDatabase(true);
+      }
+    }
+  })();
+
+  return dbFetchInFlight;
 }
- 
+
 function getFilteredFleets() {
   if (!currentUser) return [];
   if (currentUser.location === 'ALL') return fleets;
@@ -959,82 +1003,134 @@ function renderAll() { renderChecker(); renderTV(); renderSecurityTasks(); }
 // 5. LOGIKA SECURITY & CHECKER (OPTIMISTIC UI UPDATE + ANTI DOUBLE CLICK)
 // ==========================================
 function submitArrival() {
-  // Fitur Anti-Double Click
   const btn = document.querySelector('button[onclick="submitArrival()"]');
-  if (btn && btn.disabled) return;
+  if (btn && btn.dataset.sending === '1') return;
 
   const secName = document.getElementById('f-secname').value.trim();
-  const driver = document.getElementById('f-driver').value.trim(); 
-  const plate = document.getElementById('f-plate').value.trim().toUpperCase(); 
+  const driver = document.getElementById('f-driver').value.trim();
+  const plate = document.getElementById('f-plate').value.trim().toUpperCase();
   const type = document.getElementById('f-type').value;
-  
-  // Ambil data Origin/Destinasi MURNI dari tags yang dipilih
+
   let origin = selectedDestinations.join(', ');
 
-  // Validasi form kosong
-  if (!secName || !driver || !plate || !origin) { 
-    toast('❌ Semua kolom wajib diisi! (Pilih minimal 1 Origin/Tujuan)', 'err'); 
-    return; 
+  if (!secName || !driver || !plate || !origin) {
+    toast('❌ Semua kolom wajib diisi! (Pilih minimal 1 Origin/Tujuan)', 'err');
+    return;
   }
-  
-  // Validasi duplikat di Frontend lokal
-  const isDuplicate = fleets.some(f => f.plateNumber === plate && f.status !== 'done' && f.lokasi === currentUser.location);
-  if(isDuplicate) { 
-    toast('❌ Armada Plat Nomor ini sedang aktif di sistem antrian!', 'err'); 
-    return; 
-  }
-  
-  // Mengunci tombol agar tidak dobel klik
-  if (btn) { btn.disabled = true; btn.innerHTML = '⏳ Memproses...'; }
 
-  // Perbaikan Total pada Generate ID (Mencegah Overwrite Data)
-  // Menambahkan timestamp + random generator HEX agar 100% data unik[cite: 2].
-  const newId = 'ARR-' + Date.now().toString(36).toUpperCase() + '-' + Math.floor(Math.random() * 10000);
-  const nowIso = getLocalIso();
-  
-  // ⚡ OPTIMISTIC UI: Tambah ke lokal & langsung render tanpa nunggu server
-  fleets.push({
-    id: newId, secName: secName, driverName: driver, plateNumber: plate, fleetType: type, fleetSize: getSize(type),
-    arrivalTime: nowIso, checkerName: '', status: 'antrian', origin: origin, lokasi: currentUser.location, departureTime: null
-  });
-  
-  document.getElementById('f-plate').value = ''; 
-  document.getElementById('f-driver').value = ''; 
+  // Proteksi lokal instan dari double-submit.
+  if (pendingArrivals.has(plate)) {
+    toast('⏳ Plat ini sedang dikirim ke server, tunggu sinkronisasi.', 'err');
+    return;
+  }
+
+  // Validasi dari data yang sudah ada di perangkat.
+  const isDuplicate = fleets.some(
+    f => (f.plateNumber || '').toString().toUpperCase().trim() === plate &&
+         (f.status || '').toString().toLowerCase().trim() !== 'done'
+  );
+
+  if (isDuplicate) {
+    toast('❌ Armada Plat Nomor ini sedang aktif di sistem antrian!', 'err');
+    return;
+  }
+
+  if (btn) {
+    btn.dataset.sending = '1';
+    btn.disabled = false;
+  }
+
+  pendingArrivals.add(plate);
+
+  const newId = 'ARR-' + Date.now().toString(36).toUpperCase() + '-' +
+                Math.floor(Math.random() * 10000);
+
+  const optimisticTime = getLocalIso();
+
+  const optimisticFleet = {
+    id: newId,
+    secName: secName,
+    driverName: driver,
+    plateNumber: plate,
+    fleetType: type,
+    fleetSize: getSize(type),
+    arrivalTime: optimisticTime,
+    checkerName: '',
+    status: 'antrian',
+    origin: origin,
+    lokasi: currentUser.location,
+    departureTime: null
+  };
+
+  // UI bergerak SEKETIKA — tidak menunggu response server.
+  fleets.push(optimisticFleet);
+
+  document.getElementById('f-plate').value = '';
+  document.getElementById('f-driver').value = '';
   document.getElementById('f-origin').value = '';
-  
-  // Reset Data Tags Destinasi
+
   selectedDestinations = [];
   renderDestTags();
+  renderAll();
 
-  renderAll(); 
-  toast('⏳ Menyimpan ke server...');
+  toast('⚡ Kedatangan dicatat. Sinkronisasi server berjalan...');
 
-// ☁️ Push ke Google Sheets secara background
-  fetch(API_URL, { 
-    method: 'POST', 
-    body: JSON.stringify({ 
-      action: 'addArrival', id: newId, 
-      securityName: secName, driver: driver, plate: plate, origin: origin, 
-      type: type, size: getSize(type), arrivalTime: nowIso, 
+  // POST berjalan di background. Petugas langsung bisa input armada lain.
+  fetch(API_URL, {
+    method: 'POST',
+    keepalive: true,
+    cache: 'no-store',
+    headers: {
+      'Content-Type': 'text/plain;charset=utf-8'
+    },
+    body: JSON.stringify({
+      action: 'addArrival',
+      id: newId,
+      securityName: secName,
+      driver: driver,
+      plate: plate,
+      origin: origin,
+      type: type,
+      size: getSize(type),
+      arrivalTime: optimisticTime,
       lokasi: currentUser.location
     })
   })
-  .then(res => res.json())
-  .then(data => {
+  .then(async res => {
+    const data = await res.json();
+
     if (data.status === 'error') {
-       toast('❌ ' + data.message, 'err');
-       // Rollback Optimistic UI: Hapus data ganda dari layar lokal karena ditolak server
-       fleets = fleets.filter(f => f.id !== newId);
-       renderAll();
-    } else {
-       toast('✅ Kedatangan Berhasil Dicatat!'); 
-       fetchDatabase(); 
+      // Backend adalah sumber kebenaran untuk anti-duplikat.
+      fleets = fleets.filter(f => f.id !== newId);
+      renderAll();
+      toast('❌ ' + data.message, 'err');
+      return;
     }
+
+    if (data.arrivalTime) {
+      const localIdx = fleets.findIndex(f => f.id === newId);
+      if (localIdx > -1) fleets[localIdx].arrivalTime = data.arrivalTime;
+    }
+
+    renderAll();
+    fetchDatabase(true);
+    toast('✅ Kedatangan berhasil dicatat di server!');
   })
-  .catch(err => toast('❌ ' + err, 'err'))
+  .catch(err => {
+    // Jangan langsung rollback; request bisa saja sudah diterima server
+    // tetapi respons gagal kembali ke perangkat.
+    console.error('addArrival:', err);
+    toast('⚠️ Konfirmasi server terputus. Sinkronisasi otomatis berjalan.', 'err');
+    fetchDatabase(true);
+  })
   .finally(() => {
-    // Membuka kunci tombol setelah selesai
-    if (btn) { btn.disabled = false; btn.innerHTML = '✅ Catat Kedatangan'; }
+    pendingArrivals.delete(plate);
+
+    if (btn) {
+      btn.disabled = false;
+      btn.dataset.sending = '0';
+      btn.innerHTML = '✅ Catat Kedatangan';
+    }
   });
 }
 
@@ -1087,7 +1183,7 @@ function submitDeparture(id) {
     method: 'POST', 
     body: JSON.stringify({ action: 'updateDeparture', id: id, departureTime: getLocalIso() }) 
   })
-  .then(() => { toast('✅ Keberangkatan Berhasil Dicatat!'); fetchDatabase(); })
+  .then(() => { toast('✅ Keberangkatan Berhasil Dicatat!'); fetchDatabase(true); })
   .catch(err => toast('❌ ' + err, 'err'))
   .finally(() => {
     if(btn) { btn.disabled = false; btn.innerHTML = '🚀 Catat Jam Keberangkatan'; }
@@ -1125,54 +1221,165 @@ function renderChecker() {
 }
  
 function startUnloading(id) {
-  const btn = document.querySelector(`button[onclick="startUnloading('${id}')"]`);
-  if(btn && btn.disabled) return;
-  if(btn) { btn.disabled = true; btn.innerHTML = '⏳ Proses...'; }
+  const btn = document.querySelector(
+    `button[onclick="startUnloading('${id}')"]`
+  );
 
-  const cName = document.getElementById(`cn-${id}`).value.trim();
+  if (btn && btn.dataset.processing === '1') return;
+
+  const cNameEl = document.getElementById(`cn-${id}`);
+  const cName = cNameEl ? cNameEl.value.trim() : '';
   const nowIso = getLocalIso();
-  
-  // ⚡ OPTIMISTIC UI
+
+  if (btn) {
+    btn.dataset.processing = '1';
+    btn.disabled = false;
+  }
+
+  // ===============================
+  // 1. UI LANGSUNG BERUBAH
+  // ===============================
   const fIdx = fleets.findIndex(f => f.id === id);
-  if(fIdx > -1) {
+
+  if (fIdx > -1) {
     fleets[fIdx].status = 'unloading';
     fleets[fIdx].checkerName = cName;
     fleets[fIdx].unloadStartTime = nowIso;
   }
-  renderAll();
-  toast('⏳ Menyimpan ke server...');
 
-  // ☁️ Background Fetch
-  fetch(API_URL, { method: 'POST', body: JSON.stringify({ action: 'updateStatus', id: id, status: 'unloading', checkerName: cName, startTime: nowIso }) })
-  .then(() => { toast(`🔄 ${currentTerm} Berhasil Dimulai!`); fetchDatabase(); })
-  .catch(err => toast('❌ ' + err, 'err'))
+  renderAll();
+
+  toast(`⚡ ${currentTerm} dimulai`);
+
+  // ===============================
+  // 2. BACKEND DI BACKGROUND
+  // ===============================
+  fetch(API_URL, {
+    method: 'POST',
+    keepalive: true,
+    cache: 'no-store',
+    headers: {
+      'Content-Type': 'text/plain;charset=utf-8'
+    },
+    body: JSON.stringify({
+      action: 'updateStatus',
+      id: id,
+      status: 'unloading',
+      checkerName: cName
+    })
+  })
+  .then(async response => {
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+
+    const data = await response.json();
+
+    if (data.status !== 'success') {
+      throw new Error(data.message || 'Update gagal');
+    }
+
+    toast(`✅ ${currentTerm} tersimpan`);
+
+    // Reconcile tanpa menunggu polling berikutnya
+    fetchDatabase(true);
+  })
+  .catch(err => {
+    console.error('startUnloading:', err);
+
+    toast(
+      `⚠️ Sinkronisasi ${currentTerm} gagal, mencoba refresh data...`,
+      'err'
+    );
+
+    fetchDatabase(true);
+  })
   .finally(() => {
-    if(btn) { btn.disabled = false; btn.innerHTML = `🔄 MULAI ${currentTerm.toUpperCase()}`; }
+    if (btn) {
+      btn.dataset.processing = '0';
+      btn.disabled = false;
+      btn.innerHTML =
+        `🔄 MULAI ${currentTerm.toUpperCase()}`;
+    }
   });
 }
  
 function finishUnloading(id) {
-  const btn = document.querySelector(`button[onclick="finishUnloading('${id}')"]`);
-  if(btn && btn.disabled) return;
-  if(btn) { btn.disabled = true; btn.innerHTML = '⏳ Proses...'; }
+  const btn = document.querySelector(
+    `button[onclick="finishUnloading('${id}')"]`
+  );
+
+  if (btn && btn.dataset.processing === '1') return;
 
   const nowIso = getLocalIso();
-  
-  // ⚡ OPTIMISTIC UI
+
+  if (btn) {
+    btn.dataset.processing = '1';
+    btn.disabled = false;
+  }
+
+  // =====================================
+  // INSTANT LOCAL UPDATE
+  // =====================================
   const fIdx = fleets.findIndex(f => f.id === id);
-  if(fIdx > -1) {
+
+  if (fIdx > -1) {
     fleets[fIdx].status = 'done';
     fleets[fIdx].unloadEndTime = nowIso;
   }
-  renderAll();
-  toast('⏳ Menyimpan ke server...');
 
-  // ☁️ Background Fetch
-  fetch(API_URL, { method: 'POST', body: JSON.stringify({ action: 'updateStatus', id: id, status: 'done', endTime: nowIso }) })
-  .then(() => { toast(`✅ ${currentTerm} Selesai!`); fetchDatabase(); })
-  .catch(err => toast('❌ ' + err, 'err'))
+  renderAll();
+
+  toast(`⚡ ${currentTerm} selesai`);
+
+  // =====================================
+  // BACKGROUND SERVER UPDATE
+  // =====================================
+  fetch(API_URL, {
+    method: 'POST',
+    keepalive: true,
+    cache: 'no-store',
+    headers: {
+      'Content-Type': 'text/plain;charset=utf-8'
+    },
+    body: JSON.stringify({
+      action: 'updateStatus',
+      id: id,
+      status: 'done'
+    })
+  })
+  .then(async response => {
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+
+    const data = await response.json();
+
+    if (data.status !== 'success') {
+      throw new Error(data.message || 'Update gagal');
+    }
+
+    toast(`✅ ${currentTerm} selesai tersimpan`);
+
+    fetchDatabase(true);
+  })
+  .catch(err => {
+    console.error('finishUnloading:', err);
+
+    toast(
+      '⚠️ Konfirmasi server gagal, melakukan sinkronisasi...',
+      'err'
+    );
+
+    fetchDatabase(true);
+  })
   .finally(() => {
-    if(btn) { btn.disabled = false; btn.innerHTML = `✅ SELESAI ${currentTerm.toUpperCase()}`; }
+    if (btn) {
+      btn.dataset.processing = '0';
+      btn.disabled = false;
+      btn.innerHTML =
+        `✅ SELESAI ${currentTerm.toUpperCase()}`;
+    }
   });
 }
  
@@ -1734,13 +1941,23 @@ function checkSession() {
 // Jalankan pengecekan sesi saat web pertama kali dibuka
 checkSession();
 
-// Data otomatis ditarik setiap 15 detik
-setInterval(fetchDatabase, 15000);
-
-// Perbarui UI layar Dashboard secara otomatis per detik khusus untuk transisi Live Timer
+// Sinkronisasi database cepat untuk dashboard TV / perangkat lain.
+// 2 detik menggantikan polling 15 detik.
 setInterval(() => {
-  if (document.getElementById('view-tv').classList.contains('active')) renderTV();
-}, 60000);
+  if (
+    currentUser &&
+    document.getElementById('view-tv').classList.contains('active')
+  ) {
+    fetchDatabase();
+  }
+}, 1000);
+
+// Live timer TV diperbarui setiap detik.
+setInterval(() => {
+  if (document.getElementById('view-tv').classList.contains('active')) {
+    renderTV();
+  }
+}, 1000);
 </script>
 </body>
 </html>
