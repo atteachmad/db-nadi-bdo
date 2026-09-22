@@ -606,9 +606,19 @@ let currentOscillator = null;
 // sebelum backend menjawab; tetapi armada lain tetap bisa diinput.
 const pendingArrivals = new Set();
 
+// ==========================================
+// REALTIME SYNC STATE
+// ==========================================
+
+// Versi database terakhir yang diketahui browser.
+let dbVersion = '';
+
 // Cegah request GET dashboard menumpuk.
 let dbFetchInFlight = null;
 let dbFetchQueued = false;
+
+// Timer realtime global untuk SEMUA modul.
+let realtimeSyncTimer = null;
  
 let chartKPI, chartOrigin, chartChecker;
 let currentFilteredData = [];
@@ -668,7 +678,10 @@ async function handleLogin() {
       else if (user.role === 'checker') setView('checker');
       else setView('tv');
       
-      fetchDatabase(); 
+      // Reset versi untuk session baru, lalu mulai realtime sync.
+      dbVersion = '';
+      startRealtimeSync();
+      await fetchDatabase(true); 
     } else {
       toast('❌ Username atau Password Salah!', 'err');
     }
@@ -702,16 +715,26 @@ function setupOriginDestination(location) {
 }
  
 function logout() {
+  // Hentikan realtime polling sebelum logout.
+  stopRealtimeSync();
+
+  // Reset state realtime.
+  dbVersion = '';
+  dbFetchInFlight = null;
+  dbFetchQueued = false;
+
   // HAPUS SESI LOGIN
   localStorage.removeItem('nadi_user_session');
   
   currentUser = null;
+  fleets = [];
+
   document.getElementById('sidebar').style.display = 'none';
   document.getElementById('login-user').value = '';
   document.getElementById('login-pass').value = '';
   setView('login');
 }
- 
+
 function applyTerminology() {
   const elSubtitle = document.getElementById('checker-subtitle');
   if(elSubtitle) elSubtitle.textContent = `Daftar antrian dan operasional armada (${currentTerm}).`;
@@ -935,10 +958,35 @@ function fmtHM(iso) {
   }).replace('.', ':');
 }
  
+// ==========================================
+// REALTIME DATABASE SYNC
+// ==========================================
+
+function buildSyncUrl_(force = false) {
+  const separator = API_URL.includes('?') ? '&' : '?';
+
+  // mode=sync:
+  // - Jika version sama -> backend mengembalikan NOT_MODIFIED
+  // - Jika version berbeda -> backend mengembalikan data terbaru
+  let url = API_URL + separator + 'mode=sync';
+
+  // Polling biasa mengirim version terakhir yang diketahui.
+  // Force sync sengaja tidak mengirim version agar snapshot terbaru diambil.
+  if (!force && dbVersion) {
+    url += '&v=' + encodeURIComponent(dbVersion);
+  }
+
+  // Cache-buster browser/proxy.
+  url += '&_ts=' + Date.now();
+
+  return url;
+}
+
+
 async function fetchDatabase(force = false) {
   if (!currentUser) return;
 
-  // Polling dan refresh manual tidak boleh membuat request GET menumpuk.
+  // Jangan izinkan request GET menumpuk.
   if (dbFetchInFlight) {
     if (force) dbFetchQueued = true;
     return dbFetchInFlight;
@@ -946,15 +994,52 @@ async function fetchDatabase(force = false) {
 
   dbFetchInFlight = (async () => {
     try {
-      const response = await fetch(API_URL, {
+      const syncUrl = buildSyncUrl_(force);
+
+      const response = await fetch(syncUrl, {
         method: 'GET',
         cache: 'no-store'
       });
 
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
 
-      const data = await response.json();
+      const payload = await response.json();
 
+      // ======================================
+      // DATABASE BELUM BERUBAH
+      // ======================================
+      if (payload.status === 'not_modified') {
+        if (payload.version) {
+          dbVersion = payload.version;
+        }
+        return;
+      }
+
+      // ======================================
+      // VALIDASI RESPONSE
+      // ======================================
+      if (payload.status !== 'ok') {
+        throw new Error(
+          payload.message || 'Response realtime tidak valid.'
+        );
+      }
+
+      if (!Array.isArray(payload.data)) {
+        throw new Error('Format data database tidak valid.');
+      }
+
+      // Simpan version terbaru sebelum render.
+      if (payload.version) {
+        dbVersion = payload.version;
+      }
+
+      const data = payload.data;
+
+      // ======================================
+      // MAPPING DATABASE -> FLEETS
+      // ======================================
       fleets = data.map(row => ({
         id: row.id,
         secName: row.securityname,
@@ -972,15 +1057,26 @@ async function fetchDatabase(force = false) {
         departureTime: row.departuretime || null
       }));
 
+      // ======================================
+      // UPDATE SEMUA MODUL
+      // ======================================
       populateFilters();
-      if (document.getElementById('view-armada').classList.contains('active')) processAnalitik();
+
+      const armadaView = document.getElementById('view-armada');
+      if (armadaView && armadaView.classList.contains('active')) {
+        processAnalitik();
+      }
+
+      // Satu pintu render semua modul.
       renderAll();
 
     } catch (e) {
-      console.error("Koneksi terputus.", e);
+      console.error('Realtime sync gagal:', e);
     } finally {
       dbFetchInFlight = null;
 
+      // Jika selama request berjalan ada force sync,
+      // jalankan setelah request selesai.
       if (dbFetchQueued && currentUser) {
         dbFetchQueued = false;
         fetchDatabase(true);
@@ -990,6 +1086,49 @@ async function fetchDatabase(force = false) {
 
   return dbFetchInFlight;
 }
+
+
+// ==========================================
+// GLOBAL REALTIME ENGINE
+// ==========================================
+
+function startRealtimeSync() {
+  // Hindari timer realtime ganda.
+  if (realtimeSyncTimer) return;
+
+  // Sinkronisasi semua modul setiap 1 detik.
+  // Jika database tidak berubah, backend hanya mengirim NOT_MODIFIED.
+  realtimeSyncTimer = setInterval(() => {
+    if (!currentUser) return;
+    fetchDatabase(false);
+  }, 1000);
+}
+
+
+function stopRealtimeSync() {
+  if (realtimeSyncTimer) {
+    clearInterval(realtimeSyncTimer);
+    realtimeSyncTimer = null;
+  }
+}
+
+
+// Saat tab/browser kembali aktif, ambil snapshot terbaru segera.
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden && currentUser) {
+    fetchDatabase(true);
+  }
+});
+
+
+// Saat koneksi internet kembali, ambil snapshot terbaru segera.
+window.addEventListener('online', () => {
+  if (currentUser) {
+    toast('🌐 Koneksi kembali. Sinkronisasi data...');
+    fetchDatabase(true);
+  }
+});
+
 
 function getFilteredFleets() {
   if (!currentUser) return [];
@@ -1107,6 +1246,11 @@ function submitArrival() {
       return;
     }
 
+    // Simpan version database terbaru dari server.
+    if (data.version) {
+      dbVersion = data.version;
+    }
+
     if (data.arrivalTime) {
       const localIdx = fleets.findIndex(f => f.id === newId);
       if (localIdx > -1) fleets[localIdx].arrivalTime = data.arrivalTime;
@@ -1183,8 +1327,30 @@ function submitDeparture(id) {
     method: 'POST', 
     body: JSON.stringify({ action: 'updateDeparture', id: id, departureTime: getLocalIso() }) 
   })
-  .then(() => { toast('✅ Keberangkatan Berhasil Dicatat!'); fetchDatabase(true); })
-  .catch(err => toast('❌ ' + err, 'err'))
+  .then(async response => {
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+
+    const data = await response.json();
+
+    if (data.status !== 'success') {
+      throw new Error(data.message || 'Gagal mencatat keberangkatan');
+    }
+
+    // Simpan version database terbaru.
+    if (data.version) {
+      dbVersion = data.version;
+    }
+
+    toast('✅ Keberangkatan Berhasil Dicatat!');
+    fetchDatabase(true);
+  })
+  .catch(err => {
+    console.error('submitDeparture:', err);
+    toast('⚠️ ' + err.message, 'err');
+    fetchDatabase(true);
+  })
   .finally(() => {
     if(btn) { btn.disabled = false; btn.innerHTML = '🚀 Catat Jam Keberangkatan'; }
   });
@@ -1279,9 +1445,14 @@ function startUnloading(id) {
       throw new Error(data.message || 'Update gagal');
     }
 
+    // Simpan version database terbaru dari server.
+    if (data.version) {
+      dbVersion = data.version;
+    }
+
     toast(`✅ ${currentTerm} tersimpan`);
 
-    // Reconcile tanpa menunggu polling berikutnya
+    // Reconcile tanpa menunggu polling berikutnya.
     fetchDatabase(true);
   })
   .catch(err => {
@@ -1357,6 +1528,11 @@ function finishUnloading(id) {
 
     if (data.status !== 'success') {
       throw new Error(data.message || 'Update gagal');
+    }
+
+    // Simpan version database terbaru dari server.
+    if (data.version) {
+      dbVersion = data.version;
     }
 
     toast(`✅ ${currentTerm} selesai tersimpan`);
@@ -1934,23 +2110,15 @@ function checkSession() {
     else if (user.role === 'checker') setView('checker');
     else setView('tv');
     
-    fetchDatabase();
+    // Session lama juga langsung masuk ke realtime engine.
+    dbVersion = '';
+    startRealtimeSync();
+    fetchDatabase(true);
   }
 }
 
 // Jalankan pengecekan sesi saat web pertama kali dibuka
 checkSession();
-
-// Sinkronisasi database cepat untuk dashboard TV / perangkat lain.
-// 2 detik menggantikan polling 15 detik.
-setInterval(() => {
-  if (
-    currentUser &&
-    document.getElementById('view-tv').classList.contains('active')
-  ) {
-    fetchDatabase();
-  }
-}, 1000);
 
 // Live timer TV diperbarui setiap detik.
 setInterval(() => {
