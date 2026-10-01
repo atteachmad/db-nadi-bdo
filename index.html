@@ -1728,12 +1728,37 @@ function processAnalitik() {
   const checker = document.getElementById('filter-checker-analitik') ? document.getElementById('filter-checker-analitik').value : 'all';
   const lokasi = document.getElementById('filter-lokasi-analitik') ? document.getElementById('filter-lokasi-analitik').value : 'all';
  
+  // 1. Buat object tanggal filter dengan timezone WIB (Asia/Jakarta)
+  let startDateWIB = null;
+  if (start) {
+    // Menambahkan 'T00:00:00+07:00' memaksa browser membaca input sebagai jam 12 malam waktu WIB
+    startDateWIB = new Date(start + 'T00:00:00+07:00');
+  }
+
+  let endDateWIB = null;
+  if (end) {
+    // Menambahkan 'T23:59:59+07:00' memaksa browser membaca input sebagai akhir hari waktu WIB
+    endDateWIB = new Date(end + 'T23:59:59+09:00'); 
+    // Catatan: Jika menggunakan +07:00 pada jam 23:59:59, pastikan set jam akhir harinya konsisten.
+    endDateWIB = new Date(end + 'T23:59:59+07:00');
+  }
+
   currentFilteredData = currentData.filter(row => {
-    if(start && row.arrivalTime) { if(getSafeDate(row.arrivalTime) < new Date(start)) return false; }
-    if(end && row.arrivalTime) {
-      const endDate = new Date(end); endDate.setHours(23,59,59,999);
-      if(getSafeDate(row.arrivalTime) > endDate) return false;
+    if(row.arrivalTime) {
+      // 2. Ambil tanggal data armada dan konversi ke Object Date
+      const arrivalDate = getSafeDate(row.arrivalTime);
+      
+      // Jika filter start diisi, pastikan waktu kedatangan tidak kurang dari startDateWIB
+      if(startDateWIB && arrivalDate < startDateWIB) return false;
+      
+      // Jika filter end diisi, pastikan waktu kedatangan tidak lebih dari endDateWIB
+      if(endDateWIB && arrivalDate > endDateWIB) return false;
+    } else if (start || end) {
+      // Jika ada filter tanggal tapi data arrivalTime kosong, jangan loloskan filter
+      return false; 
     }
+    
+    // Filter non-tanggal tetap sama
     if(origin !== 'all' && row.origin !== origin) return false;
     if(type !== 'all' && row.fleetType !== type) return false;
     if(size !== 'all' && row.fleetSize !== size) return false;
