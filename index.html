@@ -163,7 +163,13 @@
     .ai-box { border-left: 4px solid var(--blue); background: linear-gradient(135deg, var(--surface), rgba(56,189,248,0.05)); }
     .chart-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; margin-bottom: 20px; }
     .chart-title { font-family: 'Rajdhani', sans-serif; font-size: 16px; font-weight: 700; color: var(--amber); margin-bottom: 15px; text-transform: uppercase; }
- 
+
+    .suggest-box { display:none; position:absolute; left:0; right:0; z-index:50; max-height:220px; overflow-y:auto; background:var(--surface); border:1px solid var(--border); border-radius:8px; box-shadow:0 8px 20px rgba(0,0,0,.35); margin-top:4px; }
+    .suggest-item { padding:10px 14px; font-size:14px; cursor:pointer; border-bottom:1px solid var(--border); }
+    .suggest-item:hover, .suggest-item.active { background:var(--surface2); color:var(--amber); }
+    .net-status { position: fixed; left: 8px; bottom: 8px; z-index: 9998; display: none; font-family: 'IBM Plex Mono', monospace; font-size: 11px; padding: 4px 10px; border-radius: 12px; color: #fff; max-width: 70vw; }
+    .net-ok { background: rgba(16,185,129,.85); }
+    .net-err { background: rgba(239,68,68,.92); }
     /* Login Specific CSS */
     .login-container { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; padding: 20px; }
     .login-box { max-width: 400px; width: 100%; text-align: center; }
@@ -185,7 +191,7 @@
       
       <div class="form-group" style="text-align: left;">
         <label class="form-label">Username</label>
-        <input type="text" id="login-user" class="skeuo-input" placeholder="Masukkan NIK, Pass (misal :andi003)">
+                <input type="text" id="login-user" class="skeuo-input" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="Masukkan NIK, Pass (misal :andi003)">
       </div>
       <div class="form-group" style="text-align: left; margin-bottom: 25px;">
         <label class="form-label">Password</label>
@@ -290,11 +296,13 @@
       </select>
     </div>
     
-      <div class="form-group">
+    <div class="form-group">
       <label class="form-label" id="label-origin">Origin (Asal Armada)</label>
-      <select id="f-origin" class="form-select" onchange="handleMultiDest(this)">
-        <option value="" disabled selected>Pilih Lokasi...</option>
-      </select>
+      <input class="form-input" id="f-origin" type="text" autocomplete="off" autocapitalize="characters"
+             placeholder="Ketik atau pilih kota..." style="text-transform:uppercase"
+             oninput="showOriginSuggest()" onfocus="showOriginSuggest()"
+             onkeydown="originKeydown(event)" onblur="setTimeout(hideOriginSuggest,150)" />
+      <div id="origin-suggest" class="suggest-box"></div>
       <div id="dest-tags" style="display:flex; flex-wrap:wrap; gap:5px; margin-top:8px;"></div>
     </div>
     
@@ -513,7 +521,7 @@
     </div>
   </div>
 </div>
- 
+<div id="net-status" class="net-status"></div>
 <div class="toast" id="toast"></div>
  
 <div class="modal-overlay" id="modalAbout">
@@ -619,7 +627,14 @@ let dbFetchQueued = false;
 
 // Timer realtime global untuk SEMUA modul.
 let realtimeSyncTimer = null;
- 
+// Versi data yang BENAR-BENAR sudah dimuat (bukan dari respons POST)
+let dataVersion = '';
+let dataLoaded = false;
+let lastSyncError = '';
+
+// Daftar origin/destination aktif sesuai lokasi user
+let currentOriginList = [];
+let originActiveIdx = -1;
 let chartKPI, chartOrigin, chartChecker;
 let currentFilteredData = [];
 let aiKnowledgeBase = "";
@@ -630,88 +645,91 @@ let aiKnowledgeBase = "";
 async function handleLogin() {
   const u = document.getElementById('login-user').value.trim();
   const p = document.getElementById('login-pass').value.trim();
-  
+
   if (!u || !p) {
     toast('❌ Harap masukkan username berupa NIK & pass nama depan+3 angka akhir NIK', 'err');
     return;
   }
-  
+
   const btn = document.querySelector('.login-box button');
   const originalText = btn.innerHTML;
   btn.innerHTML = 'Memverifikasi...';
   btn.disabled = true;
 
-  try {
-    const response = await fetch(API_URL, {
-      method: 'POST',
-      body: JSON.stringify({ action: 'login', username: u, pass: p })
-    });
-    const res = await response.json();
-    
-    if (res.status === 'success') {
-      const user = res.user;
-      currentUser = user;
-      
-      // SIMPAN SESI LOGIN (KEEP ME LOGGED IN)
-      localStorage.setItem('nadi_user_session', JSON.stringify(user));
-      
-      document.getElementById('sidebar').style.display = 'flex';
-      document.getElementById('user-location-badge').textContent = user.location;
-      
-      // Dynamic Terminology (Loading vs Unloading)
-      currentTerm = (user.location === 'Soekarno Hatta 452') ? 'Loading' : 'Unloading';
-      applyTerminology();
-      setupOriginDestination(user.location);
-      
-      // Hide/Show Menus based on Role
-      document.getElementById('menu-security').style.display = ['admin', 'spv', 'security'].includes(user.role) ? 'block' : 'none';
-      document.getElementById('menu-checker').style.display = ['admin', 'spv', 'checker'].includes(user.role) ? 'block' : 'none';
-      document.getElementById('menu-tv').style.display = 'block';
-      document.getElementById('menu-armada').style.display = 'block';
-      
-      // Auto-fill names untuk Security
-      if (user.role === 'security') document.getElementById('f-secname').value = user.name;
-      
-      toast(`✅ Selamat datang, ${user.name}!`);
-      
-      if (user.role === 'security') setView('security');
-      else if (user.role === 'checker') setView('checker');
-      else setView('tv');
-      
-      // Reset versi untuk session baru, lalu mulai realtime sync.
-      dbVersion = '';
-      startRealtimeSync();
-      await fetchDatabase(true); 
-    } else {
-      toast('❌ Username atau Password Salah!', 'err');
+  let res = null;
+  let lastErr = null;
+
+  // Maks 2 percobaan: server Apps Script kadang lambat saat baru "bangun"
+  for (let attempt = 1; attempt <= 2 && !res; attempt++) {
+    try {
+      const response = await fetchTimeout(API_URL, {
+        method: 'POST',
+        cache: 'no-store',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({ action: 'login', username: u, pass: p })
+      }, 15000);
+      res = await readJson(response);
+    } catch (err) {
+      lastErr = err;
+      if (attempt === 1) btn.innerHTML = 'Menyambung ulang...';
     }
-  } catch(e) {
-    toast('❌ Gagal terhubung ke Server Apps Script', 'err');
-  } finally {
-    btn.innerHTML = originalText;
-    btn.disabled = false;
   }
+
+  // Tombol SELALU dikembalikan sebelum lanjut (tidak menunggu unduh data)
+  btn.innerHTML = originalText;
+  btn.disabled = false;
+
+  if (!res) {
+    toast('❌ Gagal terhubung ke server: ' + (lastErr ? lastErr.message : ''), 'err', 6000);
+    return;
+  }
+  if (res.status !== 'success') {
+    toast('❌ Username atau Password Salah!', 'err');
+    return;
+  }
+
+  const user = res.user;
+  currentUser = user;
+  localStorage.setItem('nadi_user_session', JSON.stringify(user));
+
+  document.getElementById('sidebar').style.display = 'flex';
+  document.getElementById('user-location-badge').textContent = user.location;
+
+  currentTerm = (user.location === 'Soekarno Hatta 452') ? 'Loading' : 'Unloading';
+  applyTerminology();
+  setupOriginDestination(user.location);
+
+  document.getElementById('menu-security').style.display = ['admin', 'spv', 'security'].includes(user.role) ? 'block' : 'none';
+  document.getElementById('menu-checker').style.display = ['admin', 'spv', 'checker'].includes(user.role) ? 'block' : 'none';
+  document.getElementById('menu-tv').style.display = 'block';
+  document.getElementById('menu-armada').style.display = 'block';
+
+  if (user.role === 'security') document.getElementById('f-secname').value = user.name;
+
+  toast(`✅ Selamat datang, ${user.name}!`);
+
+  if (user.role === 'security') setView('security');
+  else if (user.role === 'checker') setView('checker');
+  else setView('tv');
+
+  dbVersion = '';
+  dataVersion = '';
+  dataLoaded = false;
+  startRealtimeSync();
+  fetchDatabase(true);   // TANPA await: data dimuat di latar belakang
 }
  
 function setupOriginDestination(location) {
   const isSoetta = location === 'Soekarno Hatta 452';
   const label = document.getElementById('label-origin');
-  const fOrigin = document.getElementById('f-origin');
-  
-  if(!label || !fOrigin) return;
+  if (label) label.textContent = isSoetta ? "DESTINATION (TUJUAN ARMADA)" : "ORIGIN (ASAL ARMADA)";
 
-  let optionsHTML = '<option value="" disabled selected>Pilih Lokasi...</option>';
+  currentOriginList = isSoetta
+    ? ['BEKASI (BKI)', 'SUKABUMI (SMI)', 'CIKARANG (CKR)', 'BOGOR (BOO)', 'CILACAP (CXP)', 'SEMARANG (SRG)', 'YOGYAKARTA (JOG)', 'SURABAYA GATEWAY (SUX)', 'DEPOK (DPK)', 'CILEGON (CLG)', 'CIREBON (CBN)', 'WANGON (WGX)', 'SURAKARTA (SOC)', 'TANGERANG (TGR)', 'JAKARTA (CGK)', 'KARAWANG (KRW)', 'MAGELANG (MGL)', 'SURABAYA (SUB)', 'TEGAL (TGL)', 'MADIUN (MDN)', 'SIDOARJO (SDA)', 'OTHER']
+    : ['SEMARANG (SRG)', 'BOGOR (BOO)', 'JAKARTA (CGK)', 'SUMEDANG (SMG)', 'BEKASI (BKI)', 'SOREANG (SOR)', 'TASIKMALAYA (TSM)', 'PURWAKARTA (PWT)', 'SOETA 452 (SOETTA)', 'CIKARANG (CKR)', 'TANGERANG (TGR)', 'SURABAYA (SUB)', 'KARAWANG (KRW)', 'WANGON (WGX)', 'DEPOK (DPK)', 'YOGYAKARTA (JOG)', 'SUKABUMI (SMI)', 'SOLO (SOLO)', 'CIMAREME (CMM)', 'MADIUN (MADIUN)', 'TANJUNG PINANG (TNJ)', 'TRISINDO', 'RODA JAYA', 'MADIUN (MDN)', 'CILACAP (CXP)', 'MAGELANG (MGL)', 'NARIPAN', 'RANCAEKEK (RCK)', 'OTHER'];
 
-  if (isSoetta) {
-     label.textContent = "DESTINATION (TUJUAN ARMADA)";
-     const dests = ['BEKASI (BKI)', 'SUKABUMI (SMI)', 'CIKARANG (CKR)', 'BOGOR (BOO)', 'CILACAP (CXP)', 'SEMARANG (SRG)', 'YOGYAKARTA (JOG)', 'SURABAYA GATEWAY (SUX)', 'DEPOK (DPK)', 'CILEGON (CLG)', 'CIREBON (CBN)', 'WANGON (WGX)', 'SURAKARTA (SOC)', 'TANGERANG (TGR)', 'JAKARTA (CGK)', 'KARAWANG (KRW)', 'MAGELANG (MGL)', 'SURABAYA (SUB)', 'TEGAL (TGL)', 'MADIUN (MDN)', 'SIDOARJO (SDA)', 'OTHER'];
-     optionsHTML += dests.map(d => `<option value="${d}">${d}</option>`).join('');
-  } else {
-     label.textContent = "ORIGIN (ASAL ARMADA)";
-     const origins = ['SEMARANG (SRG)','BOGOR (BOO)','JAKARTA (CGK)','SUMEDANG (SMG)','BEKASI (BKI)','SOREANG (SOR)','TASIKMALAYA (TSM)','PURWAKARTA (PWT)','SOETA 452 (SOETTA)','CIKARANG (CKR)','TANGERANG (TGR)','SURABAYA (SUB)','KARAWANG (KRW)','WANGON (WGX)','DEPOK (DPK)','YOGYAKARTA (JOG)','SUKABUMI (SMI)','SOLO (SOLO)','CIMAREME (CMM)','MADIUN (MADIUN)','TANJUNG PINANG (TNJ)','TRISINDO','RODA JAYA','MADIUN (MDN)','CILACAP (CXP)','MAGELANG (MGL)','NARIPAN','RANCAEKEK (RCK)','OTHER'];
-     optionsHTML += origins.map(o => `<option value="${o}">${o}</option>`).join('');
-  }
-  fOrigin.innerHTML = optionsHTML;
+  const inp = document.getElementById('f-origin');
+  if (inp) inp.value = '';
 }
  
 function logout() {
@@ -728,7 +746,11 @@ function logout() {
   
   currentUser = null;
   fleets = [];
-
+    dataVersion = '';
+  dataLoaded = false;
+  lastSyncError = '';
+  setNet(true);   // currentUser sudah null -> badge disembunyikan
+  
   document.getElementById('sidebar').style.display = 'none';
   document.getElementById('login-user').value = '';
   document.getElementById('login-pass').value = '';
@@ -806,10 +828,13 @@ function toggleTheme() {
  
 function openModal(id) { document.getElementById(id).style.display = 'flex'; }
 function closeModal(id) { document.getElementById(id).style.display = 'none'; }
-function toast(msg, type) { 
-  const el = document.getElementById('toast'); el.textContent = msg; 
-  el.className = `toast toast-${type==='err'?'err':'ok'} show`; 
-  setTimeout(() => el.classList.remove('show'), 3000); 
+let toastTimer = null;
+function toast(msg, type, ms) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = `toast toast-${type==='err'?'err':'ok'} show`;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), ms || 3000);
 }
  
 function setView(v) { 
@@ -887,7 +912,73 @@ function removeDest(idx) {
   selectedDestinations.splice(idx, 1);
   renderDestTags();
 }
+// --- ORIGIN/DESTINATION: ketik manual + saran sesuai daftar terdaftar ---
+function normOrigin(s) {
+  return (s || '').toString().toUpperCase().replace(/\s+/g, ' ').trim();
+}
 
+function getOriginMatches(q) {
+  q = normOrigin(q);
+  const chosen = new Set(selectedDestinations);
+  const pool = currentOriginList.filter(x => !chosen.has(x));
+  if (!q) return pool;
+  const starts = pool.filter(x => x.startsWith(q));
+  const contains = pool.filter(x => !x.startsWith(q) && x.includes(q));
+  return starts.concat(contains);
+}
+
+function showOriginSuggest() {
+  const box = document.getElementById('origin-suggest');
+  const inp = document.getElementById('f-origin');
+  if (!box || !inp) return;
+
+  const list = getOriginMatches(inp.value).slice(0, 30);
+  originActiveIdx = list.length ? 0 : -1;
+
+  if (!list.length) {
+    box.innerHTML = '<div class="suggest-item" style="color:var(--text2); cursor:default;">Tidak ada di daftar terdaftar</div>';
+  } else {
+    box.innerHTML = list.map((x, i) =>
+      `<div class="suggest-item${i === 0 ? ' active' : ''}" data-val="${x}" onmousedown="pickOrigin(this.dataset.val)">${x}</div>`
+    ).join('');
+  }
+  box.style.display = 'block';
+}
+
+function hideOriginSuggest() {
+  const box = document.getElementById('origin-suggest');
+  if (box) box.style.display = 'none';
+}
+
+function pickOrigin(val) {
+  if (!val) return;
+  if (selectedDestinations.length >= 6) { toast('❌ Maksimal 6 Lokasi!', 'err'); return; }
+  if (!selectedDestinations.includes(val)) {
+    selectedDestinations.push(val);
+    renderDestTags();
+  }
+  const inp = document.getElementById('f-origin');
+  if (inp) inp.value = '';
+  hideOriginSuggest();
+}
+
+function originKeydown(ev) {
+  const box = document.getElementById('origin-suggest');
+  const items = box ? box.querySelectorAll('.suggest-item[data-val]') : [];
+
+  if (ev.key === 'ArrowDown' || ev.key === 'ArrowUp') {
+    if (!items.length) return;
+    ev.preventDefault();
+    originActiveIdx = (originActiveIdx + (ev.key === 'ArrowDown' ? 1 : -1) + items.length) % items.length;
+    items.forEach((el, i) => el.classList.toggle('active', i === originActiveIdx));
+    items[originActiveIdx].scrollIntoView({ block: 'nearest' });
+  } else if (ev.key === 'Enter') {
+    ev.preventDefault();
+    if (originActiveIdx >= 0 && items[originActiveIdx]) pickOrigin(items[originActiveIdx].dataset.val);
+  } else if (ev.key === 'Escape') {
+    hideOriginSuggest();
+  }
+}
 function playAlarm(level) {
   try {
     if (currentOscillator) return; 
@@ -960,7 +1051,37 @@ function fmtWIB(iso) {
   const hh = p.hour === '24' ? '00' : p.hour;
   return `${p.year}-${p.month}-${p.day} ${hh}:${p.minute}:${p.second}`;
 }
- 
+ // Fetch dengan batas waktu supaya tidak menggantung selamanya
+function fetchTimeout(url, options, ms) {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), ms || 20000);
+  return fetch(url, Object.assign({}, options, { signal: ctrl.signal }))
+    .catch(err => {
+      if (err && err.name === 'AbortError') throw new Error('Server tidak menjawab (timeout)');
+      throw err;
+    })
+    .finally(() => clearTimeout(timer));
+}
+
+// Parse JSON aman: jika server membalas HTML (error Apps Script), beri pesan jelas
+async function readJson(res) {
+  const txt = await res.text();
+  try { return JSON.parse(txt); }
+  catch (e) { throw new Error('Server membalas bukan JSON. Cek deployment Apps Script (New version, akses "Anyone").'); }
+}
+
+// Badge status koneksi (pojok kiri bawah)
+function setNet(ok, msg) {
+  lastSyncError = ok ? '' : (msg || 'Tidak terhubung');
+  if (ok && currentUser) dataLoaded = dataLoaded; // data dianggap termuat hanya setelah fetch sukses (lihat fetchDatabase)
+  const el = document.getElementById('net-status');
+  if (!el) return;
+  if (!currentUser) { el.style.display = 'none'; return; }
+  el.style.display = 'block';
+  el.className = 'net-status ' + (ok ? 'net-ok' : 'net-err');
+  el.textContent = ok ? '● Terhubung' : '● Gagal sinkron: ' + lastSyncError;
+}
+  
 // ==========================================
 // REALTIME DATABASE SYNC
 // ==========================================
@@ -975,8 +1096,8 @@ function buildSyncUrl_(force = false) {
 
   // Polling biasa mengirim version terakhir yang diketahui.
   // Force sync sengaja tidak mengirim version agar snapshot terbaru diambil.
-  if (!force && dbVersion) {
-    url += '&v=' + encodeURIComponent(dbVersion);
+    if (!force && dataVersion) {
+    url += '&v=' + encodeURIComponent(dataVersion);
   }
 
   // Cache-buster browser/proxy.
@@ -989,7 +1110,6 @@ function buildSyncUrl_(force = false) {
 async function fetchDatabase(force = false) {
   if (!currentUser) return;
 
-  // Jangan izinkan request GET menumpuk.
   if (dbFetchInFlight) {
     if (force) dbFetchQueued = true;
     return dbFetchInFlight;
@@ -997,53 +1117,29 @@ async function fetchDatabase(force = false) {
 
   dbFetchInFlight = (async () => {
     try {
-      const syncUrl = buildSyncUrl_(force);
+      const response = await fetchTimeout(buildSyncUrl_(force), { method: 'GET', cache: 'no-store' }, 25000);
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
-      const response = await fetch(syncUrl, {
-        method: 'GET',
-        cache: 'no-store'
-      });
+      const payload = await readJson(response);
 
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`);
-      }
-
-      const payload = await response.json();
-
-      // ======================================
-      // DATABASE BELUM BERUBAH
-      // ======================================
-      if (payload.status === 'not_modified') {
-        if (payload.version) {
-          dbVersion = payload.version;
-        }
+      // Data belum berubah
+      if (payload && payload.status === 'not_modified') {
+        if (!dataLoaded) { dataVersion = ''; return; }  // belum pernah memuat data -> ulangi penuh
+        setNet(true);
         return;
       }
 
-      // ======================================
-      // VALIDASI RESPONSE
-      // ======================================
-      if (payload.status !== 'ok') {
-        throw new Error(
-          payload.message || 'Response realtime tidak valid.'
-        );
+      if (Array.isArray(payload)) {
+        throw new Error('Apps Script masih versi lama. Deploy > Manage deployments > New version.');
       }
-
+      if (!payload || payload.status !== 'ok') {
+        throw new Error((payload && payload.message) || 'Response realtime tidak valid.');
+      }
       if (!Array.isArray(payload.data)) {
         throw new Error('Format data database tidak valid.');
       }
 
-      // Simpan version terbaru sebelum render.
-      if (payload.version) {
-        dbVersion = payload.version;
-      }
-
-      const data = payload.data;
-
-      // ======================================
-      // MAPPING DATABASE -> FLEETS
-      // ======================================
-      fleets = data.map(row => ({
+      fleets = payload.data.map(row => ({
         id: row.id,
         secName: row.securityname,
         driverName: row.driver,
@@ -1052,17 +1148,19 @@ async function fetchDatabase(force = false) {
         fleetSize: row.size,
         arrivalTime: row.arrivaltime,
         checkerName: row.checkername,
-        status: row.status,
+        status: (row.status || '').toString().toLowerCase().trim(),
         unloadStartTime: row.unloadstart || null,
         unloadEndTime: row.unloadend || null,
         origin: row['origin/destination'] || row.origin || row.origindestination,
-        lokasi: row.lokasi || 'Gedebage',
+        lokasi: (row.lokasi || 'Gedebage').toString().trim(),
         departureTime: row.departuretime || null
       }));
 
-      // ======================================
-      // UPDATE SEMUA MODUL
-      // ======================================
+      // Versi baru dicatat HANYA setelah data berhasil diterima
+      if (payload.version) { dataVersion = payload.version; dbVersion = payload.version; }
+      dataLoaded = true;
+      setNet(true);
+
       populateFilters();
 
       const armadaView = document.getElementById('view-armada');
@@ -1070,16 +1168,15 @@ async function fetchDatabase(force = false) {
         processAnalitik();
       }
 
-      // Satu pintu render semua modul.
       renderAll();
 
     } catch (e) {
       console.error('Realtime sync gagal:', e);
+      setNet(false, e.message);
+      renderAll();   // supaya pesan error tampil di TV/Checker
     } finally {
       dbFetchInFlight = null;
 
-      // Jika selama request berjalan ada force sync,
-      // jalankan setelah request selesai.
       if (dbFetchQueued && currentUser) {
         dbFetchQueued = false;
         fetchDatabase(true);
@@ -1136,7 +1233,8 @@ window.addEventListener('online', () => {
 function getFilteredFleets() {
   if (!currentUser) return [];
   if (currentUser.location === 'ALL') return fleets;
-  return fleets.filter(f => f.lokasi === currentUser.location);
+  const loc = currentUser.location.toString().trim().toLowerCase();
+  return fleets.filter(f => (f.lokasi || '').toString().trim().toLowerCase() === loc);
 }
  
 function renderAll() { renderChecker(); renderTV(); renderSecurityTasks(); }
@@ -1153,43 +1251,53 @@ function submitArrival() {
   const plate = document.getElementById('f-plate').value.trim().toUpperCase();
   const type = document.getElementById('f-type').value;
 
-  let origin = selectedDestinations.join(', ');
+  // Teks yang diketik tapi belum dipilih: dipakai hanya jika cocok persis dengan daftar
+  const originInput = document.getElementById('f-origin');
+  const typed = normOrigin(originInput ? originInput.value : '');
+  if (typed) {
+    const exact = currentOriginList.find(x => x === typed);
+    if (!exact) {
+      toast('❌ "' + typed + '" tidak ada di daftar. Pilih dari saran yang muncul.', 'err', 5000);
+      showOriginSuggest();
+      return;
+    }
+    if (!selectedDestinations.includes(exact) && selectedDestinations.length < 6) {
+      selectedDestinations.push(exact);
+      renderDestTags();
+    }
+  }
+
+  const origin = selectedDestinations.join(', ');
 
   if (!secName || !driver || !plate || !origin) {
     toast('❌ Semua kolom wajib diisi! (Pilih minimal 1 Origin/Tujuan)', 'err');
     return;
   }
 
-  // Proteksi lokal instan dari double-submit.
   if (pendingArrivals.has(plate)) {
     toast('⏳ Plat ini sedang dikirim ke server, tunggu sinkronisasi.', 'err');
     return;
   }
 
-  // Validasi dari data yang sudah ada di perangkat.
   const isDuplicate = fleets.some(
     f => (f.plateNumber || '').toString().toUpperCase().trim() === plate &&
          (f.status || '').toString().toLowerCase().trim() !== 'done'
   );
-
   if (isDuplicate) {
     toast('❌ Armada Plat Nomor ini sedang aktif di sistem antrian!', 'err');
     return;
   }
 
-  if (btn) {
-    btn.dataset.sending = '1';
-    btn.disabled = false;
-  }
+  // Admin (ALL) mencatat ke Gedebage supaya barisnya konsisten
+  const lokasiKirim = currentUser.location === 'ALL' ? 'Gedebage' : currentUser.location;
 
+  if (btn) { btn.dataset.sending = '1'; btn.disabled = false; }
   pendingArrivals.add(plate);
 
-  const newId = 'ARR-' + Date.now().toString(36).toUpperCase() + '-' +
-                Math.floor(Math.random() * 10000);
-
+  const newId = 'ARR-' + Date.now().toString(36).toUpperCase() + '-' + Math.floor(Math.random() * 10000);
   const optimisticTime = getLocalIso();
 
-  const optimisticFleet = {
+  fleets.push({
     id: newId,
     secName: secName,
     driverName: driver,
@@ -1200,31 +1308,25 @@ function submitArrival() {
     checkerName: '',
     status: 'antrian',
     origin: origin,
-    lokasi: currentUser.location,
+    lokasi: lokasiKirim,
     departureTime: null
-  };
-
-  // UI bergerak SEKETIKA — tidak menunggu response server.
-  fleets.push(optimisticFleet);
+  });
 
   document.getElementById('f-plate').value = '';
   document.getElementById('f-driver').value = '';
-  document.getElementById('f-origin').value = '';
-
+  if (originInput) originInput.value = '';
   selectedDestinations = [];
   renderDestTags();
+  hideOriginSuggest();
   renderAll();
 
-  toast('⚡ Kedatangan dicatat. Sinkronisasi server berjalan...');
+  toast('⚡ Kedatangan dicatat. Mengirim ke server...');
 
-  // POST berjalan di background. Petugas langsung bisa input armada lain.
-  fetch(API_URL, {
+  fetchTimeout(API_URL, {
     method: 'POST',
     keepalive: true,
     cache: 'no-store',
-    headers: {
-      'Content-Type': 'text/plain;charset=utf-8'
-    },
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
     body: JSON.stringify({
       action: 'addArrival',
       id: newId,
@@ -1235,23 +1337,17 @@ function submitArrival() {
       type: type,
       size: getSize(type),
       arrivalTime: optimisticTime,
-      lokasi: currentUser.location
+      lokasi: lokasiKirim
     })
-  })
+  }, 25000)
   .then(async res => {
-    const data = await res.json();
+    const data = await readJson(res);
 
     if (data.status === 'error') {
-      // Backend adalah sumber kebenaran untuk anti-duplikat.
       fleets = fleets.filter(f => f.id !== newId);
       renderAll();
-      toast('❌ ' + data.message, 'err');
+      toast('❌ ' + data.message, 'err', 6000);
       return;
-    }
-
-    // Simpan version database terbaru dari server.
-    if (data.version) {
-      dbVersion = data.version;
     }
 
     if (data.arrivalTime) {
@@ -1264,15 +1360,12 @@ function submitArrival() {
     toast('✅ Kedatangan berhasil dicatat di server!');
   })
   .catch(err => {
-    // Jangan langsung rollback; request bisa saja sudah diterima server
-    // tetapi respons gagal kembali ke perangkat.
     console.error('addArrival:', err);
-    toast('⚠️ Konfirmasi server terputus. Sinkronisasi otomatis berjalan.', 'err');
+    toast('⚠️ Server belum konfirmasi (' + err.message + '). Cek spreadsheet sebelum input ulang.', 'err', 7000);
     fetchDatabase(true);
   })
   .finally(() => {
     pendingArrivals.delete(plate);
-
     if (btn) {
       btn.disabled = false;
       btn.dataset.sending = '0';
@@ -1374,7 +1467,13 @@ function renderChecker() {
     list = list.filter(f => (f.plateNumber && f.plateNumber.toLowerCase().includes(checkerSearchTerm)) || (f.driverName && f.driverName.toLowerCase().includes(checkerSearchTerm)));
   }
   
-  if(!list.length) { el.innerHTML = '<div style="text-align:center; padding: 20px; color: var(--text2);">Kosong / Tidak ditemukan.</div>'; return; }
+  if(!list.length) { e  if (!list.length) {
+    const emptyMsg = !dataLoaded
+      ? (lastSyncError ? '⚠️ Gagal memuat data: ' + lastSyncError : '⏳ Memuat data dari server...')
+      : 'Kosong / Tidak ditemukan.';
+    el.innerHTML = '<div style="text-align:center; padding: 20px; color: var(--text2);">' + emptyMsg + '</div>';
+    return;
+  }
   
   el.innerHTML = list.map(f => {
     let content = ''; const status = f.status.toLowerCase();
@@ -1637,7 +1736,13 @@ function renderTV() {
  if(document.getElementById('kc-violations')) document.getElementById('kc-violations').textContent = violations;
  if(document.getElementById('ind-lewat-kpi')) document.getElementById('ind-lewat-kpi').textContent = violations;
  
-  if (!enrichedFleets.length) { tbody.innerHTML = `<tr><td colspan="6"><div style="text-align:center; padding: 20px;">Operasional Clear.</div></td></tr>`; return; }
+  if (!enrichedFleets.length) { tbody.  if (!enrichedFleets.length) {
+    const emptyMsg = !dataLoaded
+      ? (lastSyncError ? '⚠️ Gagal memuat data: ' + lastSyncError : '⏳ Memuat data dari server...')
+      : 'Operasional Clear.';
+    tbody.innerHTML = `<tr><td colspan="6"><div style="text-align:center; padding: 20px;">${emptyMsg}</div></td></tr>`;
+    return;
+  }
   
   tbody.innerHTML = enrichedFleets.map((f, i) => {
     const status = f.status.toLowerCase();
@@ -2164,7 +2269,11 @@ function checkSession() {
   }
 }
 
-// Jalankan pengecekan sesi saat web pertama kali dibuka
+  // Jalankan pengecekan sesi saat web pertama kali dibuka
+  // Bangunkan server Apps Script selagi user mengetik username/password
+if (!localStorage.getItem('nadi_user_session')) {
+  fetch(API_URL + '?mode=ping&_ts=' + Date.now(), { cache: 'no-store' }).catch(() => {});
+}
 checkSession();
 
 // Live timer TV diperbarui setiap detik.
