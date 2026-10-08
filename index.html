@@ -1621,11 +1621,12 @@ function renderTV() {
         else if (uStat.isCrit === 1 && alarmToPlay !== 'extreme') alarmToPlay = 'warning'; 
     }
     
-        return Object.assign({}, f, {
+    return Object.assign({}, f, {
       priorityScore: Math.max(qStat.isCrit, uStat.isCrit),
       qDur: qDur, qStat: qStat, uDur: uDur, uStat: uStat
     });
- 
+  });   // <-- INI YANG HILANG: penutup activeFleets.map(f => {
+
   if (alarmToPlay) playAlarm(alarmToPlay);
  
  enrichedFleets.sort((a, b) => b.priorityScore - a.priorityScore);
