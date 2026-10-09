@@ -800,7 +800,7 @@ function setView(v) {
  
 function startDictation(inputId, iconEl) {
   if (window.hasOwnProperty('webkitSpeechRecognition') || window.hasOwnProperty('SpeechRecognition')) {
-    const SpeechRecognition = window.Windows || window.webkitSpeechRecognition;
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     const recognition = new SpeechRecognition();
     recognition.lang = "id-ID"; recognition.continuous = false; recognition.interimResults = false;
     iconEl.classList.add("active"); toast("Mendengarkan... Silakan bicara", "ok");
@@ -903,11 +903,15 @@ function getLocalIso() {
 // SOLUSI BUG TIMER: Membaca waktu dari DB secara presisi
 function getSafeDate(isoStr) {
   if (!isoStr) return null;
-  let clean = isoStr.trim();
-  // Jika teks dari DB tidak punya penanda zona waktu (Z atau +), paksa jadi WIB (+07:00)
-  if (!clean.endsWith('Z') && !clean.includes('+') && clean.includes('T')) {
-    clean += '+07:00';
-  }
+  let clean = isoStr.toString().trim();
+  if (!clean) return null;
+
+  // Format Sheet/backend "2026-10-08 09:16:57" -> "2026-10-08T09:16:57"
+  if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}/.test(clean)) clean = clean.replace(' ', 'T');
+
+  // Tanpa penanda zona (Z / +07:00) -> anggap WIB
+  if (clean.includes('T') && !/(Z|[+-]\d{2}:?\d{2})$/i.test(clean)) clean += '+07:00';
+
   const d = new Date(clean);
   return isNaN(d.getTime()) ? null : d;
 }
@@ -934,7 +938,17 @@ function fmtHM(iso) {
     hour12: false
   }).replace('.', ':');
 }
- 
+ // Format ke "yyyy-MM-dd HH:mm:ss" WIB, sama dengan tampilan di Google Sheet
+function fmtWIB(iso) {
+  const d = getSafeDate(iso);
+  if (!d) return '';
+  const p = new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'Asia/Jakarta', year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false
+  }).formatToParts(d).reduce((a, x) => { a[x.type] = x.value; return a; }, {});
+  const hh = p.hour === '24' ? '00' : p.hour;
+  return `${p.year}-${p.month}-${p.day} ${hh}:${p.minute}:${p.second}`;
+}
 async function fetchDatabase(force = false) {
   if (!currentUser) return;
 
@@ -1442,8 +1456,10 @@ function renderTV() {
         else if (uStat.isCrit === 1 && alarmToPlay !== 'extreme') alarmToPlay = 'warning'; 
     }
     
-    f.priorityScore = Math.max(qStat.isCrit, uStat.isCrit);
-    f.qDur = qDur; f.qStat = qStat; f.uDur = uDur; f.uStat = uStat; return f;
+    return Object.assign({}, f, {
+      priorityScore: Math.max(qStat.isCrit, uStat.isCrit),
+      qDur: qDur, qStat: qStat, uDur: uDur, uStat: uStat
+    });
   });
  
   if (alarmToPlay) playAlarm(alarmToPlay);
@@ -1740,33 +1756,62 @@ function updateAnalitikCharts(data) {
 }
  
 function downloadFilteredData() {
- if(!currentFilteredData || currentFilteredData.length === 0) { 
-    toast("Tidak ada data untuk diekspor pada filter ini.", "err"); return; 
+  if (!currentFilteredData || currentFilteredData.length === 0) {
+    toast("Tidak ada data untuk diekspor pada filter ini.", "err");
+    return;
   }
-  const allColumns = [];
- currentFilteredData.forEach(row => {
-   Object.keys(row).forEach(key => { if(!allColumns.includes(key)) allColumns.push(key); });
-  });
- 
-  let csvContent = allColumns.join(",") + "\n";
+
+  const csvCell = (v) => {
+    if (v === undefined || v === null) return '';
+    let s = String(v);
+    if (/[",\n\r]/.test(s)) s = '"' + s.replace(/"/g, '""') + '"';
+    return s;
+  };
+
+  const durAntri = r => (r.arrivalTime && r.unloadStartTime) ? elapsed(r.arrivalTime, r.unloadStartTime) : '';
+  const durProses = r => (r.unloadStartTime && r.unloadEndTime) ? elapsed(r.unloadStartTime, r.unloadEndTime) : '';
+  const lewatKPI = r => {
+    const q = durAntri(r), u = durProses(r);
+    if (q === '' && u === '') return '';
+    if (q !== '' && q > KPI_QUEUE) return 'Lewat KPI';
+    if (u !== '' && u > (KPI_UNLOAD[r.fleetSize] || 60)) return 'Lewat KPI';
+    return 'Sesuai';
+  };
+
+  // Header dibuat sama dengan header Google Sheet + 3 kolom hitungan di akhir
+  const columns = [
+    ['id',                   r => r.id],
+    ['securityname',         r => r.secName],
+    ['driver',               r => r.driverName],
+    ['plate',                r => r.plateNumber],
+    ['type',                 r => r.fleetType],
+    ['size',                 r => r.fleetSize],
+    ['arrivaltime',          r => fmtWIB(r.arrivalTime)],
+    ['checkername',          r => r.checkerName],
+    ['status',               r => r.status],
+    ['unloadstart',          r => fmtWIB(r.unloadStartTime)],
+    ['unloadend',            r => fmtWIB(r.unloadEndTime)],
+    ['origin/destination',   r => r.origin],
+    ['lokasi',               r => r.lokasi],
+    ['departuretime',        r => fmtWIB(r.departureTime)],
+    ['durasi_antrian_menit', durAntri],
+    ['durasi_proses_menit',  durProses],
+    ['status_kpi',           lewatKPI]
+  ];
+
+  let csv = columns.map(c => c[0]).join(',') + '\n';
   currentFilteredData.forEach(row => {
-    let rowValues = allColumns.map(colName => {
-      let cellData = (row[colName] === undefined || row[colName] === null) ? "" : row[colName];
-      if (typeof cellData === 'string') {
-        cellData = cellData.replace(/"/g, '""');
-        if (cellData.includes(",") || cellData.includes("\n") || cellData.includes('"')) { cellData = `"${cellData}"`; }
-      }
-      return cellData;
-    });
-    csvContent += rowValues.join(",") + "\n";
+    csv += columns.map(c => csvCell(c[1](row))).join(',') + '\n';
   });
- 
-  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+
+  // BOM supaya Excel membaca UTF-8 dengan benar
+  const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
- link.setAttribute("href", url);
-  link.setAttribute("download", `DB_NADI_Report_${new Date().toISOString().slice(0,10)}.csv`);
- document.body.appendChild(link); link.click(); document.body.removeChild(link);
+  const link = document.createElement('a');
+  link.setAttribute('href', url);
+  link.setAttribute('download', `DB_NADI_Report_${fmtWIB(new Date().toISOString()).slice(0, 10)}.csv`);
+  document.body.appendChild(link); link.click(); document.body.removeChild(link);
+  URL.revokeObjectURL(url);
   toast("✅ Data Berhasil Diunduh (Berdasarkan Filter).");
 }
  
@@ -1950,14 +1995,14 @@ setInterval(() => {
   ) {
     fetchDatabase();
   }
-}, 1000);
+}, 3000);
 
 // Live timer TV diperbarui setiap detik.
 setInterval(() => {
   if (document.getElementById('view-tv').classList.contains('active')) {
     renderTV();
   }
-}, 1000);
+}, 3000);
 </script>
 </body>
 </html>
