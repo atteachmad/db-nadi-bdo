@@ -451,7 +451,7 @@
       
       <div style="display: flex; justify-content: flex-end; gap: 10px; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 15px;">
         <button class="skeuo-btn btn-outline" onclick="resetAnalitikFilters()"><i class="fa-solid fa-rotate-left"></i> Reset Filter</button>
-        <button class="skeuo-btn btn-primary" onclick="downloadFilteredData()"><i class="fa fa-download"></i> Ekspor CSV Sesuai Filter</button>
+        <button class="skeuo-btn btn-primary" onclick="downloadFilteredData()"><i class="fa fa-download"></i> Ekspor Excel Sesuai Filter</button>
       </div>
     </div>
  
@@ -469,6 +469,10 @@
         <canvas id="chartChecker"></canvas>
       </div>
     </div>
+          <div class="skeuo-card chart-card" style="grid-column: 1 / -1;">
+        <div class="chart-title">Jumlah Armada per Jenis <span style="font-size:10px; color:var(--text2);">(hijau = Small · biru = Medium · kuning = Large · klik bar untuk filter)</span></div>
+        <div style="position:relative; height:340px;"><canvas id="chartType"></canvas></div>
+      </div>
   </div>
 </div>
  
@@ -610,7 +614,7 @@ const pendingArrivals = new Set();
 let dbFetchInFlight = null;
 let dbFetchQueued = false;
  
-let chartKPI, chartOrigin, chartChecker;
+let chartKPI, chartOrigin, chartChecker, chartType;
 let currentFilteredData = [];
 let aiKnowledgeBase = "";
  
@@ -794,7 +798,7 @@ function setView(v) {
   if(document.getElementById(`view-${v}`)) {
     document.getElementById(`view-${v}`).classList.add('active'); 
   }
-  if(v === 'armada') renderCharts(); 
+    if(v === 'armada') { renderCharts(); fetchDatabase(true); } 
   renderAll(); 
 }
  
@@ -905,12 +909,11 @@ function getSafeDate(isoStr) {
   if (!isoStr) return null;
   let clean = isoStr.toString().trim();
   if (!clean) return null;
+  const pad2 = x => String(x).padStart(2, '0');
 
-  // Format Sheet/backend "2026-10-08 09:16:57" -> "2026-10-08T09:16:57"
-  if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}/.test(clean)) clean = clean.replace(' ', 'T');
-
-  // Tanpa penanda zona (Z / +07:00) -> anggap WIB
-  if (clean.includes('T') && !/(Z|[+-]\d{2}:?\d{2})$/i.test(clean)) clean += '+07:00';
+  // "2026-10-08 9:16:57" / "2026-10-08 09:16:57" / "2026-10-08T09:16:57" (tanpa zona) -> WIB
+  const m = clean.match(/^(\d{4})-(\d{1,2})-(\d{1,2})[ T](\d{1,2}):(\d{2})(?::(\d{2}))?$/);
+  if (m) clean = `${m[1]}-${pad2(m[2])}-${pad2(m[3])}T${pad2(m[4])}:${m[5]}:${m[6] || '00'}+07:00`;
 
   const d = new Date(clean);
   return isNaN(d.getTime()) ? null : d;
@@ -920,9 +923,8 @@ function getSafeDate(isoStr) {
 function elapsed(startIso, endIso) {
   const start = getSafeDate(startIso);
   if (!start) return 0;
-  
   const end = endIso ? getSafeDate(endIso) : new Date();
-  // .getTime() mengembalikan nilai absolut, 100% kebal terhadap bentrok Timezone
+  if (!end) return 0;
   return Math.max(0, Math.floor((end.getTime() - start.getTime()) / 60000));
 }
 
@@ -950,24 +952,21 @@ function fmtWIB(iso) {
   return `${p.year}-${p.month}-${p.day} ${hh}:${p.minute}:${p.second}`;
 }
 async function fetchDatabase(force = false) {
-  if (!currentUser) return;
+  if (!currentUser) return false;
 
-  // Polling dan refresh manual tidak boleh membuat request GET menumpuk.
   if (dbFetchInFlight) {
     if (force) dbFetchQueued = true;
     return dbFetchInFlight;
   }
 
   dbFetchInFlight = (async () => {
+    let ok = false;
     try {
-      const response = await fetch(API_URL, {
-        method: 'GET',
-        cache: 'no-store'
-      });
-
+      const response = await fetch(API_URL + '?_ts=' + Date.now(), { method: 'GET', cache: 'no-store' });
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
       const data = await response.json();
+      if (!Array.isArray(data)) throw new Error('Format data tidak valid (cek deployment Apps Script)');
 
       fleets = data.map(row => ({
         id: row.id,
@@ -978,28 +977,33 @@ async function fetchDatabase(force = false) {
         fleetSize: row.size,
         arrivalTime: row.arrivaltime,
         checkerName: row.checkername,
-        status: row.status,
+        status: (row.status || '').toString().toLowerCase().trim(),
         unloadStartTime: row.unloadstart || null,
         unloadEndTime: row.unloadend || null,
         origin: row['origin/destination'] || row.origin || row.origindestination,
-        lokasi: row.lokasi || 'Gedebage',
-        departureTime: row.departuretime || null
+        lokasi: (row.lokasi || 'Gedebage').toString().trim(),
+        departureTime: row.departuretime || null,
+        ltAntrian: row.lt_antrian_menit,
+        ltProses: row.lt_proses_menit,
+        ltTotal: row.lt_total_menit,
+        ltBerangkat: row.lt_keberangkatan_menit
       }));
 
       populateFilters();
       if (document.getElementById('view-armada').classList.contains('active')) processAnalitik();
       renderAll();
+      ok = true;
 
     } catch (e) {
       console.error("Koneksi terputus.", e);
     } finally {
       dbFetchInFlight = null;
-
       if (dbFetchQueued && currentUser) {
         dbFetchQueued = false;
         fetchDatabase(true);
       }
     }
+    return ok;
   })();
 
   return dbFetchInFlight;
@@ -1008,7 +1012,8 @@ async function fetchDatabase(force = false) {
 function getFilteredFleets() {
   if (!currentUser) return [];
   if (currentUser.location === 'ALL') return fleets;
-  return fleets.filter(f => f.lokasi === currentUser.location);
+  const loc = currentUser.location.toString().trim().toLowerCase();
+  return fleets.filter(f => (f.lokasi || '').toString().trim().toLowerCase() === loc);
 }
  
 function renderAll() { renderChecker(); renderTV(); renderSecurityTasks(); }
@@ -1556,134 +1561,166 @@ function resetAnalitikFilters() {
   processAnalitik();
 }
  
+// ---------- Helper lead time (dipakai TV-agnostik: Analitik & Ekspor) ----------
+function numOrNull(v) {
+  if (v === '' || v === null || v === undefined) return null;
+  const n = Number(v);
+  return isNaN(n) ? null : n;
+}
+
+// Lead time dalam menit. Nilai dari kolom spreadsheet diprioritaskan; jika kosong dihitung dari jam.
+function getLead(r) {
+  const q = (r.arrivalTime && r.unloadStartTime) ? elapsed(r.arrivalTime, r.unloadStartTime) : null;
+  const u = (r.unloadStartTime && r.unloadEndTime) ? elapsed(r.unloadStartTime, r.unloadEndTime) : null;
+  const t = (r.arrivalTime && r.unloadEndTime) ? elapsed(r.arrivalTime, r.unloadEndTime) : null;
+  const d = (r.unloadEndTime && r.departureTime) ? elapsed(r.unloadEndTime, r.departureTime) : null;
+  const sq = numOrNull(r.ltAntrian), su = numOrNull(r.ltProses), st = numOrNull(r.ltTotal), sd = numOrNull(r.ltBerangkat);
+  return {
+    q: sq !== null ? sq : q,
+    u: su !== null ? su : u,
+    t: st !== null ? st : t,
+    d: sd !== null ? sd : d
+  };
+}
+
+function isKpiFail(r, L) {
+  return (L.q !== null && L.q > KPI_QUEUE) ||
+         (L.u !== null && L.u > (KPI_UNLOAD[r.fleetSize] || 60));
+}
+
 function processAnalitik() {
   const currentData = getFilteredFleets();
-  if(!currentData) return;
-  
-  const start = document.getElementById('filter-start') ? document.getElementById('filter-start').value : '';
-  const end = document.getElementById('filter-end') ? document.getElementById('filter-end').value : '';
-  const origin = document.getElementById('filter-origin-analitik') ? document.getElementById('filter-origin-analitik').value : 'all';
-  const type = document.getElementById('filter-type-analitik') ? document.getElementById('filter-type-analitik').value : 'all';
-  const size = document.getElementById('filter-size-analitik') ? document.getElementById('filter-size-analitik').value : 'all';
-  const checker = document.getElementById('filter-checker-analitik') ? document.getElementById('filter-checker-analitik').value : 'all';
-  const lokasi = document.getElementById('filter-lokasi-analitik') ? document.getElementById('filter-lokasi-analitik').value : 'all';
- 
+  if (!currentData) return;
+
+  const val = (id, def) => { const el = document.getElementById(id); return el ? el.value : def; };
+  const start = val('filter-start', ''), end = val('filter-end', '');
+  const origin = val('filter-origin-analitik', 'all');
+  const type = val('filter-type-analitik', 'all');
+  const size = val('filter-size-analitik', 'all');
+  const checker = val('filter-checker-analitik', 'all');
+  const lokasi = val('filter-lokasi-analitik', 'all');
+
+  // Batas tanggal dibaca sebagai WIB (bukan UTC)
+  const startMs = start ? new Date(start + 'T00:00:00+07:00').getTime() : null;
+  const endMs = end ? new Date(end + 'T23:59:59.999+07:00').getTime() : null;
+
   currentFilteredData = currentData.filter(row => {
-    if(start && row.arrivalTime) { if(getSafeDate(row.arrivalTime) < new Date(start)) return false; }
-    if(end && row.arrivalTime) {
-      const endDate = new Date(end); endDate.setHours(23,59,59,999);
-      if(getSafeDate(row.arrivalTime) > endDate) return false;
+    if (startMs !== null || endMs !== null) {
+      const a = getSafeDate(row.arrivalTime);
+      if (!a) return false;
+      const t = a.getTime();
+      if (startMs !== null && t < startMs) return false;
+      if (endMs !== null && t > endMs) return false;
     }
-    if(origin !== 'all' && row.origin !== origin) return false;
-    if(type !== 'all' && row.fleetType !== type) return false;
-    if(size !== 'all' && row.fleetSize !== size) return false;
-    if(checker !== 'all' && row.checkerName !== checker) return false;
-    if(lokasi !== 'all' && row.lokasi !== lokasi) return false;
+    if (origin !== 'all' && row.origin !== origin) return false;
+    if (type !== 'all' && row.fleetType !== type) return false;
+    if (size !== 'all' && row.fleetSize !== size) return false;
+    if (checker !== 'all' && row.checkerName !== checker) return false;
+    if (lokasi !== 'all' && row.lokasi !== lokasi) return false;
     return true;
   });
- 
- generateAI(currentFilteredData);
- updateAnalitikCharts(currentFilteredData);
+
+  generateAI(currentFilteredData);
+  updateAnalitikCharts(currentFilteredData);
 }
- 
+
 function generateAI(data) {
   const box = document.getElementById('ai-insight-text');
-  if(!box) return;
-  if(!data || data.length === 0) {
+  if (!box) return;
+  if (!data || data.length === 0) {
     box.innerHTML = "Tidak ada data pada rentang waktu atau filter yang Anda pilih.";
     return;
   }
- 
-  let total = data.length;
-  let kpiViolations = 0;
-  let totalQueueTime = 0, totalUnloadTime = 0;
-  let checkerStats = {};
-  let worstAnomalies = [];
- 
+
+  const total = data.length;
+  let selesai = 0, proses = 0, antri = 0, dinilai = 0, fail = 0;
+  let sumQ = 0, nQ = 0, sumU = 0, nU = 0, sumT = 0, nT = 0, sumD = 0, nD = 0;
+  const checkerStats = {};
+
   data.forEach(r => {
-    let qDur = r.arrivalTime && r.unloadStartTime ? elapsed(r.arrivalTime, r.unloadStartTime) : 0;
-    let uDur = r.unloadStartTime && r.unloadEndTime ? elapsed(r.unloadStartTime, r.unloadEndTime) : 0;
-    
-    totalQueueTime += qDur;
-    totalUnloadTime += uDur;
- 
-    let isViolated = false;
-    if(qDur > KPI_QUEUE) { 
-      isViolated = true; 
-     worstAnomalies.push(`Antrian Overdue (${qDur}m) dari origin ${r.origin || '-'}`); 
+    const st = (r.status || '').toLowerCase();
+    if (st === 'done') selesai++; else if (st === 'unloading') proses++; else antri++;
+
+    const L = getLead(r);
+    if (L.q !== null) { sumQ += L.q; nQ++; }
+    if (L.u !== null) { sumU += L.u; nU++; }
+    if (L.t !== null) { sumT += L.t; nT++; }
+    if (L.d !== null) { sumD += L.d; nD++; }
+
+    // SLA hanya dinilai untuk armada yang sudah dimulai (punya jam mulai)
+    if (L.q !== null || L.u !== null) {
+      dinilai++;
+      if (isKpiFail(r, L)) fail++;
     }
-    if(r.fleetSize && uDur > (KPI_UNLOAD[r.fleetSize] || 60)) { isViolated = true; }
-    if(isViolated) kpiViolations++;
- 
-    if(r.checkerName) {
-     if(!checkerStats[r.checkerName]) checkerStats[r.checkerName] = { count: 0, time: 0 };
-     checkerStats[r.checkerName].count++;
-     checkerStats[r.checkerName].time += uDur;
+
+    if (r.checkerName && L.u !== null) {
+      if (!checkerStats[r.checkerName]) checkerStats[r.checkerName] = { count: 0, time: 0 };
+      checkerStats[r.checkerName].count++;
+      checkerStats[r.checkerName].time += L.u;
     }
   });
- 
-  let violationRate = Math.round((kpiViolations / total) * 100);
-  let avgQueue = Math.round(totalQueueTime / total);
-  
+
+  const avg = (s, n) => n ? Math.round(s / n) : '-';
+  const violationRate = dinilai ? Math.round(fail / dinilai * 100) : 0;
+  const avgQueue = nQ ? Math.round(sumQ / nQ) : 0;
+
   let worstChecker = ""; let maxAvgTime = 0;
-  for(let c in checkerStats) {
-    let avgT = checkerStats[c].time / checkerStats[c].count;
-    if(avgT > maxAvgTime && checkerStats[c].count > 1) { maxAvgTime = avgT; worstChecker = c; }
+  for (const c in checkerStats) {
+    const avgT = checkerStats[c].time / checkerStats[c].count;
+    if (avgT > maxAvgTime && checkerStats[c].count > 1) { maxAvgTime = avgT; worstChecker = c; }
   }
- 
+
   let reco = '<b style="color: var(--green);">🟢 Operasional Berjalan Optimal.</b> Tidak ada kendala mencolok.';
-  if(violationRate > 20) {
+  if (violationRate > 20) {
     reco = `<b style="color: var(--red);">🔴 Tingkat Pelanggaran Tinggi (>20%).</b> Anomali Proses Ditemukan!<br>Rekomendasi: Tambah alokasi personil lapangan atau evaluasi alur kerja gate-to-dock.`;
-  } else if(avgQueue > 60) {
+  } else if (avgQueue > 60) {
     reco = `<b style="color: var(--yellow);">🟡 Rata-rata Waktu Antri Tinggi (${avgQueue}m).</b><br>Rekomendasi: Percepat administrasi dari tim Security ke Checker.`;
   }
- 
-  let insightHtml = `
+
+  let html = `
     <b>📊 Kesimpulan Matematis (${currentTerm}):</b><br>
-    • Total Volume Diproses: <b>${total} Armada</b><br>
-    • Rasio Pelanggaran SLA: <b>${violationRate}%</b> (${kpiViolations} armada melewati KPI)<br>
-    • Rata-rata Durasi Antrian (Kedatangan - Proses): <b>${avgQueue} menit</b><br>
+    • Total Volume (sesuai filter): <b>${total} armada</b> — ${selesai} selesai · ${proses} sedang proses · ${antri} masih antri<br>
+    • Total baris tersedia untuk akun Anda: <b>${getFilteredFleets().length}</b> (samakan dengan jumlah baris spreadsheet pada lokasi yang sama)<br>
+    • Rasio Pelanggaran SLA: <b>${violationRate}%</b> (${fail} dari ${dinilai} armada yang sudah dimulai)<br>
+    • Rata-rata lead time: antrian <b>${avg(sumQ, nQ)} mnt</b> · proses <b>${avg(sumU, nU)} mnt</b> · total <b>${avg(sumT, nT)} mnt</b>${nD ? ` · tunggu berangkat <b>${avg(sumD, nD)} mnt</b>` : ''}<br>
   `;
-  
-  if(worstChecker) insightHtml += `• Evaluasi Personil: Waktu proses terlama tercatat pada <b>${worstChecker}</b> dengan rata-rata <b>${Math.round(maxAvgTime)} menit/armada</b>.<br>`;
-  
-  insightHtml += `<br>${reco}`;
-  box.innerHTML = insightHtml;
+  if (worstChecker) html += `• Evaluasi Personil: Waktu proses terlama tercatat pada <b>${worstChecker}</b> dengan rata-rata <b>${Math.round(maxAvgTime)} menit/armada</b>.<br>`;
+  html += `<br>${reco}`;
+  box.innerHTML = html;
 }
- 
+
 function updateAnalitikCharts(data) {
   const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
   const textColor = isDark ? '#e2eaf5' : '#4b5563';
   const gridColor = isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)';
- 
+
   Chart.defaults.color = textColor;
- Chart.defaults.font.family = "'Nunito', sans-serif";
- 
+  Chart.defaults.font.family = "'Nunito', sans-serif";
+
   let kpiOk = 0, kpiFail = 0;
-  let originCounts = {};
-  let checkerStats = {};
- 
+  const originCounts = {};
+  const checkerStats = {};
+  const typeCounts = {};
+
   data.forEach(r => {
-    let qDur = r.arrivalTime && r.unloadStartTime ? elapsed(r.arrivalTime, r.unloadStartTime) : 0;
-    let uDur = r.unloadStartTime && r.unloadEndTime ? elapsed(r.unloadStartTime, r.unloadEndTime) : 0;
-    
-    let isFail = false;
-    if(qDur > KPI_QUEUE) isFail = true;
-    if(r.fleetSize && uDur > (KPI_UNLOAD[r.fleetSize] || 60)) isFail = true;
-    
-    if(isFail) kpiFail++; else kpiOk++;
-    if(r.origin) originCounts[r.origin] = (originCounts[r.origin] || 0) + 1;
-    if(r.checkerName) {
-     if(!checkerStats[r.checkerName]) checkerStats[r.checkerName] = { sum:0, count:0 };
-     checkerStats[r.checkerName].sum += uDur;
-     checkerStats[r.checkerName].count++;
+    const L = getLead(r);
+
+    if (L.q !== null || L.u !== null) {
+      if (isKpiFail(r, L)) kpiFail++; else kpiOk++;
+    }
+    if (r.origin) originCounts[r.origin] = (originCounts[r.origin] || 0) + 1;
+    if (r.fleetType) typeCounts[r.fleetType] = (typeCounts[r.fleetType] || 0) + 1;
+    if (r.checkerName && L.u !== null) {
+      if (!checkerStats[r.checkerName]) checkerStats[r.checkerName] = { sum: 0, count: 0 };
+      checkerStats[r.checkerName].sum += L.u;
+      checkerStats[r.checkerName].count++;
     }
   });
- 
+
   // 1. CHART KPI
   const ctxKPI = document.getElementById('chartKPI');
-  if(ctxKPI) {
-    if(chartKPI) chartKPI.destroy();
+  if (ctxKPI) {
+    if (chartKPI) chartKPI.destroy();
     chartKPI = new Chart(ctxKPI, {
       type: 'doughnut',
       data: {
@@ -1693,126 +1730,203 @@ function updateAnalitikCharts(data) {
       options: { responsive: true, cutout: '70%', plugins: { legend: { position: 'bottom' } } }
     });
   }
- 
+
   // 2. CHART ORIGIN
   const ctxOrigin = document.getElementById('chartOrigin');
-  if(ctxOrigin) {
-    if(chartOrigin) chartOrigin.destroy();
-    let oKeys = Object.keys(originCounts).sort((a,b)=>originCounts[b]-originCounts[a]).slice(0,5);
-    let oVals = oKeys.map(k=>originCounts[k]);
+  if (ctxOrigin) {
+    if (chartOrigin) chartOrigin.destroy();
+    const oKeys = Object.keys(originCounts).sort((a, b) => originCounts[b] - originCounts[a]).slice(0, 5);
+    const oVals = oKeys.map(k => originCounts[k]);
     chartOrigin = new Chart(ctxOrigin, {
       type: 'bar',
       data: {
         labels: oKeys,
         datasets: [{ label: 'Total Armada (Volume)', data: oVals, backgroundColor: '#38bdf8', borderRadius: 4, hoverBackgroundColor: '#0ea5e9' }]
       },
-      options: { 
-        responsive: true, 
-        plugins: { legend: { display: false } }, 
+      options: {
+        responsive: true,
+        plugins: { legend: { display: false } },
         scales: { y: { grid: { color: gridColor } }, x: { grid: { color: gridColor } } },
-        onHover: (event, chartElement) => { event.native.target.style.cursor = chartElement[0] ? 'pointer' : 'default'; },
+        onHover: (event, el) => { event.native.target.style.cursor = el[0] ? 'pointer' : 'default'; },
         onClick: (event, elements) => {
-           if(elements.length > 0) {
-               const index = elements[0].index;
-               const selectedOrigin = chartOrigin.data.labels[index];
-               document.getElementById('filter-origin-analitik').value = selectedOrigin;
-               toast(`🔍 Filter diterapkan: Origin ${selectedOrigin}`);
-               processAnalitik();
-            }
+          if (elements.length > 0) {
+            const selectedOrigin = chartOrigin.data.labels[elements[0].index];
+            document.getElementById('filter-origin-analitik').value = selectedOrigin;
+            toast(`🔍 Filter diterapkan: Origin ${selectedOrigin}`);
+            processAnalitik();
+          }
         }
       }
     });
   }
- 
+
   // 3. CHART CHECKER
   const ctxChecker = document.getElementById('chartChecker');
-  if(ctxChecker) {
-    if(chartChecker) chartChecker.destroy();
-    let cKeys = Object.keys(checkerStats);
-    let cVals = cKeys.map(k => Math.round(checkerStats[k].sum / checkerStats[k].count));
+  if (ctxChecker) {
+    if (chartChecker) chartChecker.destroy();
+    const cKeys = Object.keys(checkerStats);
+    const cVals = cKeys.map(k => Math.round(checkerStats[k].sum / checkerStats[k].count));
     chartChecker = new Chart(ctxChecker, {
       type: 'bar',
       data: {
         labels: cKeys,
         datasets: [{ label: `Waktu Rata-Rata (Menit)`, data: cVals, backgroundColor: '#f59e0b', borderRadius: 4, hoverBackgroundColor: '#d97706' }]
       },
-      options: { 
-        responsive: true, 
-        plugins: { legend: { display: false } }, 
+      options: {
+        responsive: true,
+        plugins: { legend: { display: false } },
         scales: { y: { grid: { color: gridColor } }, x: { grid: { color: gridColor } } },
-        onHover: (event, chartElement) => { event.native.target.style.cursor = chartElement[0] ? 'pointer' : 'default'; },
+        onHover: (event, el) => { event.native.target.style.cursor = el[0] ? 'pointer' : 'default'; },
         onClick: (event, elements) => {
-           if(elements.length > 0) {
-               const index = elements[0].index;
-               const selectedChecker = chartChecker.data.labels[index];
-               document.getElementById('filter-checker-analitik').value = selectedChecker;
-               toast(`🔍 Filter diterapkan: Checker ${selectedChecker}`);
-               processAnalitik();
-            }
+          if (elements.length > 0) {
+            const selectedChecker = chartChecker.data.labels[elements[0].index];
+            document.getElementById('filter-checker-analitik').value = selectedChecker;
+            toast(`🔍 Filter diterapkan: Checker ${selectedChecker}`);
+            processAnalitik();
+          }
         }
       }
     });
   }
+
+  // 4. CHART JUMLAH PER JENIS ARMADA (batang horizontal)
+  const ctxType = document.getElementById('chartType');
+  if (ctxType) {
+    if (chartType) chartType.destroy();
+    const sizeColor = { small: '#10b981', medium: '#38bdf8', large: '#f59e0b' };
+    const tKeys = Object.keys(typeCounts).sort((a, b) => typeCounts[b] - typeCounts[a]);
+    const tVals = tKeys.map(k => typeCounts[k]);
+    const tColors = tKeys.map(k => sizeColor[getSize(k)] || '#7a9cbf');
+    const totalType = tVals.reduce((a, b) => a + b, 0) || 1;
+
+    chartType = new Chart(ctxType, {
+      type: 'bar',
+      data: {
+        labels: tKeys,
+        datasets: [{ label: 'Jumlah Armada', data: tVals, backgroundColor: tColors, borderRadius: 4 }]
+      },
+      options: {
+        indexAxis: 'y',
+        responsive: true,
+        maintainAspectRatio: false,
+        layout: { padding: { right: 36 } },
+        plugins: {
+          legend: { display: false },
+          tooltip: { callbacks: { label: c => `${c.parsed.x} armada (${Math.round(c.parsed.x / totalType * 100)}%)` } }
+        },
+        scales: {
+          x: { beginAtZero: true, grid: { color: gridColor }, ticks: { precision: 0 } },
+          y: { grid: { color: gridColor } }
+        },
+        onHover: (event, el) => { event.native.target.style.cursor = el[0] ? 'pointer' : 'default'; },
+        onClick: (event, elements) => {
+          if (elements.length > 0) {
+            const selectedType = chartType.data.labels[elements[0].index];
+            document.getElementById('filter-type-analitik').value = selectedType;
+            toast(`🔍 Filter diterapkan: Jenis ${selectedType}`);
+            processAnalitik();
+          }
+        }
+      },
+      plugins: [{
+        id: 'valueLabels',
+        afterDatasetsDraw(chart) {
+          const c = chart.ctx;
+          c.save();
+          c.fillStyle = textColor;
+          c.font = "bold 12px Nunito, sans-serif";
+          c.textBaseline = 'middle';
+          chart.getDatasetMeta(0).data.forEach((bar, i) => {
+            c.fillText(String(chart.data.datasets[0].data[i]), bar.x + 6, bar.y);
+          });
+          c.restore();
+        }
+      }]
+    });
+  }
 }
- 
+
 function downloadFilteredData() {
   if (!currentFilteredData || currentFilteredData.length === 0) {
     toast("Tidak ada data untuk diekspor pada filter ini.", "err");
     return;
   }
 
-  const csvCell = (v) => {
+  // Kolom berurutan seperti spreadsheet; t:1 = kolom waktu (WIB)
+  const cols = [
+    { h: 'id',                     g: r => r.id },
+    { h: 'securityname',           g: r => r.secName },
+    { h: 'driver',                 g: r => r.driverName },
+    { h: 'plate',                  g: r => r.plateNumber },
+    { h: 'origin/destination',     g: r => r.origin },
+    { h: 'type',                   g: r => r.fleetType },
+    { h: 'size',                   g: r => r.fleetSize },
+    { h: 'arrivaltime',            g: r => r.arrivalTime, t: 1 },
+    { h: 'checkername',            g: r => r.checkerName },
+    { h: 'status',                 g: r => r.status },
+    { h: 'unloadstart',            g: r => r.unloadStartTime, t: 1 },
+    { h: 'unloadend',              g: r => r.unloadEndTime, t: 1 },
+    { h: 'lokasi',                 g: r => r.lokasi },
+    { h: 'departuretime',          g: r => r.departureTime, t: 1 },
+    { h: 'lt_antrian_menit',       g: r => getLead(r).q },
+    { h: 'lt_proses_menit',        g: r => getLead(r).u },
+    { h: 'lt_total_menit',         g: r => getLead(r).t },
+    { h: 'lt_keberangkatan_menit', g: r => getLead(r).d },
+    { h: 'status_kpi',             g: r => {
+        const L = getLead(r);
+        if (isKpiFail(r, L)) return 'Lewat KPI';
+        return (r.status === 'done') ? 'Sesuai' : 'Belum selesai';
+    } }
+  ];
+
+  const dash = v => (v === undefined || v === null || v === '') ? null : v;
+  const fname = `DB_NADI_Report_${fmtWIB(new Date().toISOString()).slice(0, 10)}`;
+
+  // ---- Excel (.xlsx): jam disimpan sebagai tanggal asli berformat WIB ----
+  if (typeof XLSX !== 'undefined') {
+    const serial = iso => { const d = getSafeDate(iso); return d ? (d.getTime() + 7 * 3600000) / 86400000 + 25569 : null; };
+
+    const aoa = [cols.map(c => c.h)];
+    currentFilteredData.forEach(r => aoa.push(cols.map(c => c.t ? serial(c.g(r)) : dash(c.g(r)))));
+
+    const ws = XLSX.utils.aoa_to_sheet(aoa);
+    const range = XLSX.utils.decode_range(ws['!ref']);
+    cols.forEach((c, ci) => {
+      if (!c.t) return;
+      for (let R = 1; R <= range.e.r; R++) {
+        const cell = ws[XLSX.utils.encode_cell({ r: R, c: ci })];
+        if (cell && cell.t === 'n') cell.z = 'yyyy-mm-dd hh:mm:ss';
+      }
+    });
+    ws['!cols'] = cols.map(c => ({ wch: c.t ? 20 : Math.max(14, c.h.length + 2) }));
+    ws['!autofilter'] = { ref: ws['!ref'] };
+
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Data');
+    XLSX.writeFile(wb, fname + '.xlsx');
+    toast("✅ Excel berhasil diunduh (sesuai filter, jam WIB).");
+    return;
+  }
+
+  // ---- Cadangan: CSV ----
+  const csvCell = v => {
     if (v === undefined || v === null) return '';
     let s = String(v);
     if (/[",\n\r]/.test(s)) s = '"' + s.replace(/"/g, '""') + '"';
     return s;
   };
-
-  const durAntri = r => (r.arrivalTime && r.unloadStartTime) ? elapsed(r.arrivalTime, r.unloadStartTime) : '';
-  const durProses = r => (r.unloadStartTime && r.unloadEndTime) ? elapsed(r.unloadStartTime, r.unloadEndTime) : '';
-  const lewatKPI = r => {
-    const q = durAntri(r), u = durProses(r);
-    if (q === '' && u === '') return '';
-    if (q !== '' && q > KPI_QUEUE) return 'Lewat KPI';
-    if (u !== '' && u > (KPI_UNLOAD[r.fleetSize] || 60)) return 'Lewat KPI';
-    return 'Sesuai';
-  };
-
-  // Header dibuat sama dengan header Google Sheet + 3 kolom hitungan di akhir
-  const columns = [
-    ['id',                   r => r.id],
-    ['securityname',         r => r.secName],
-    ['driver',               r => r.driverName],
-    ['plate',                r => r.plateNumber],
-    ['type',                 r => r.fleetType],
-    ['size',                 r => r.fleetSize],
-    ['arrivaltime',          r => fmtWIB(r.arrivalTime)],
-    ['checkername',          r => r.checkerName],
-    ['status',               r => r.status],
-    ['unloadstart',          r => fmtWIB(r.unloadStartTime)],
-    ['unloadend',            r => fmtWIB(r.unloadEndTime)],
-    ['origin/destination',   r => r.origin],
-    ['lokasi',               r => r.lokasi],
-    ['departuretime',        r => fmtWIB(r.departureTime)],
-    ['durasi_antrian_menit', durAntri],
-    ['durasi_proses_menit',  durProses],
-    ['status_kpi',           lewatKPI]
-  ];
-
-  let csv = columns.map(c => c[0]).join(',') + '\n';
-  currentFilteredData.forEach(row => {
-    csv += columns.map(c => csvCell(c[1](row))).join(',') + '\n';
+  let csv = cols.map(c => c.h).join(',') + '\n';
+  currentFilteredData.forEach(r => {
+    csv += cols.map(c => csvCell(c.t ? fmtWIB(c.g(r)) : c.g(r))).join(',') + '\n';
   });
-
-  // BOM supaya Excel membaca UTF-8 dengan benar
   const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.setAttribute('href', url);
-  link.setAttribute('download', `DB_NADI_Report_${fmtWIB(new Date().toISOString()).slice(0, 10)}.csv`);
+  link.setAttribute('download', fname + '.csv');
   document.body.appendChild(link); link.click(); document.body.removeChild(link);
   URL.revokeObjectURL(url);
-  toast("✅ Data Berhasil Diunduh (Berdasarkan Filter).");
+  toast("✅ Data berhasil diunduh (CSV, jam WIB).");
 }
  
 // ==========================================
@@ -1986,16 +2100,26 @@ function checkSession() {
 // Jalankan pengecekan sesi saat web pertama kali dibuka
 checkSession();
 
-// Sinkronisasi database cepat untuk dashboard TV / perangkat lain.
-// 2 detik menggantikan polling 15 detik.
-setInterval(() => {
-  if (
-    currentUser &&
-    document.getElementById('view-tv').classList.contains('active')
-  ) {
-    fetchDatabase();
-  }
-}, 3000);
+// Polling ringan: cek versi saja tiap 3 detik, unduh data hanya jika ada perubahan.
+// Berlaku untuk SEMUA halaman (Security, Checker, TV, Analitik).
+let lastDbVersion = '';
+
+async function pollDbVersion() {
+  if (!currentUser || document.hidden || dbFetchInFlight) return;
+  try {
+    const r = await fetch(API_URL + '?mode=ver&_ts=' + Date.now(), { cache: 'no-store' });
+    const j = await r.json();
+    if (!j || !j.version) { fetchDatabase(false); return; }   // cadangan jika backend belum diperbarui
+    if (j.version !== lastDbVersion) {
+      const ok = await fetchDatabase(true);
+      if (ok) lastDbVersion = j.version;
+    }
+  } catch (e) { /* coba lagi 3 detik kemudian */ }
+}
+setInterval(pollDbVersion, 3000);
+
+document.addEventListener('visibilitychange', () => { if (!document.hidden && currentUser) pollDbVersion(); });
+window.addEventListener('online', () => { if (currentUser) pollDbVersion(); });
 
 // Live timer TV diperbarui setiap detik.
 setInterval(() => {
