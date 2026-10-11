@@ -621,6 +621,11 @@ let aiKnowledgeBase = "";
 // ==========================================
 // 2. LOGIKA LOGIN & OTENTIKASI
 // ==========================================
+function canInputArrival(u) {
+  if (!u) return false;
+  if (['admin', 'spv', 'security'].includes(u.role)) return true;
+  return u.role === 'checker' && u.location === 'Soekarno Hatta 452';
+}  
 async function handleLogin() {
   const u = document.getElementById('login-user').value.trim();
   const p = document.getElementById('login-pass').value.trim();
@@ -658,13 +663,13 @@ async function handleLogin() {
       setupOriginDestination(user.location);
       
       // Hide/Show Menus based on Role
-      document.getElementById('menu-security').style.display = ['admin', 'spv', 'security'].includes(user.role) ? 'block' : 'none';
+      document.getElementById('menu-security').style.display = canInputArrival(user) ? 'block' : 'none';
       document.getElementById('menu-checker').style.display = ['admin', 'spv', 'checker'].includes(user.role) ? 'block' : 'none';
       document.getElementById('menu-tv').style.display = 'block';
       document.getElementById('menu-armada').style.display = 'block';
       
       // Auto-fill names untuk Security
-      if (user.role === 'security') document.getElementById('f-secname').value = user.name;
+      if (user.role === 'security' || user.role === 'checker') document.getElementById('f-secname').value = user.name;
       
       toast(`✅ Selamat datang, ${user.name}!`);
       
@@ -2082,12 +2087,12 @@ function checkSession() {
     applyTerminology();
     setupOriginDestination(user.location);
     
-    document.getElementById('menu-security').style.display = ['admin', 'spv', 'security'].includes(user.role) ? 'block' : 'none';
+    document.getElementById('menu-security').style.display = canInputArrival(user) ? 'block' : 'none';
     document.getElementById('menu-checker').style.display = ['admin', 'spv', 'checker'].includes(user.role) ? 'block' : 'none';
     document.getElementById('menu-tv').style.display = 'block';
     document.getElementById('menu-armada').style.display = 'block';
     
-    if (user.role === 'security') document.getElementById('f-secname').value = user.name;
+    if (user.role === 'security' || user.role === 'checker') document.getElementById('f-secname').value = user.name;
     
     if (user.role === 'security') setView('security');
     else if (user.role === 'checker') setView('checker');
