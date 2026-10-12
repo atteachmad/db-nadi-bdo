@@ -128,7 +128,7 @@
     .kpi-alert-box { background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.3); padding: 4px 10px; border-radius: 6px; color: var(--red); }
     .live-dot { display: inline-flex; align-items: center; gap: 6px; color: var(--green); animation: blink 1.5s infinite; }
     .live-dot::before { content: ""; display: inline-block; width: 8px; height: 8px; background-color: var(--green); border-radius: 50%; }
- 
+    .live-dot[style*="--red"]::before { background-color: var(--red); }
     .table-wrap { width: 100%; overflow-x: auto; }
     table { width: 100%; border-collapse: collapse; }
     th { padding: 14px 20px; text-align: left; font-family: 'Rajdhani', sans-serif; font-size: 12px; font-weight: 700; text-transform: uppercase; color: var(--text2); border-bottom: 1px solid var(--border); cursor: pointer; user-select: none; }
@@ -362,7 +362,7 @@
         <div class="table-title">DAFTAR ARMADA <span id="tbl-lokasi" style="color:#fff; font-size:14px; margin-left: 10px;"></span></div>
         <div class="live-kpi-indicators">
           <div class="kpi-alert-box">Lewat KPI: <span id="ind-lewat-kpi" style="margin-left: 4px;">0</span></div>
-          <div class="live-dot">LIVE</div>
+          <div class="live-dot" id="live-indicator">LIVE</div>
         </div>
       </div>
       <div class="table-wrap">
@@ -409,11 +409,11 @@
       <div style="display: flex; flex-wrap: wrap; gap: 15px; margin-bottom: 20px; align-items: flex-end;">
         <div style="flex: 1; min-width: 140px;">
           <label class="form-label">Tanggal Mulai</label>
-          <input type="date" id="filter-start" class="skeuo-input" onchange="processAnalitik()">
+          <input type="date" id="filter-start" class="skeuo-input" onchange="loadAnalitikRange()">
         </div>
         <div style="flex: 1; min-width: 140px;">
           <label class="form-label">Tanggal Akhir</label>
-          <input type="date" id="filter-end" class="skeuo-input" onchange="processAnalitik()">
+          <input type="date" id="filter-end" class="skeuo-input" onchange="loadAnalitikRange()">
         </div>
         
         <div style="flex: 1; min-width: 140px;">
@@ -617,7 +617,60 @@ let dbFetchQueued = false;
 let chartKPI, chartOrigin, chartChecker, chartType;
 let currentFilteredData = [];
 let aiKnowledgeBase = "";
- 
+ // ---------- JAM SISTEM (WAKTU SERVER) ----------
+let serverOffsetMs = 0;          // selisih: waktu server - waktu perangkat
+let clockSynced = false;
+let bestRtt = Infinity, bestRttAt = 0;
+
+function nowMs() { return Date.now() + serverOffsetMs; }   // PAKAI INI, bukan Date.now()/new Date()
+
+function syncServerClock(serverNow, t0, t1) {
+  if (!serverNow) return;
+  const rtt = t1 - t0;
+  if (rtt > 8000) return;
+  const stale = (t1 - bestRttAt) > 300000;      // kalibrasi ulang tiap 5 menit
+  if (rtt <= bestRtt || stale) {
+    bestRtt = rtt; bestRttAt = t1;
+    serverOffsetMs = (Number(serverNow) + rtt / 2) - t1;
+    clockSynced = true;
+  }
+}
+
+// ---------- STATE SINKRONISASI ----------
+const POLL_MS = 4000;
+let lastDbVersion = '';
+let pollFailCount = 0;
+let pollTimer = null;
+const pendingRows = new Map();      // id -> armada baru yang belum sampai ke server
+const pendingPatches = new Map();   // id -> perubahan status yang belum dikonfirmasi server
+
+function normPlate(s) { return (s || '').toString().toUpperCase().replace(/[^A-Z0-9]/g, ''); }
+function isActiveStatus(s) { return (s || '').toString().toLowerCase().trim() !== 'done'; }
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+function setPatch(id, fields) {
+  const cur = pendingPatches.get(id) || { fields: {}, seq: 0 };
+  Object.assign(cur.fields, fields); cur.seq++;
+  pendingPatches.set(id, cur);
+  return cur.seq;
+}
+function releasePatch(id, seq, delay) {
+  const del = () => { const c = pendingPatches.get(id); if (c && c.seq === seq) pendingPatches.delete(id); };
+  if (delay) setTimeout(del, delay); else del();
+}
+function mergePending(list) {
+  const ids = new Set(list.map(f => f.id));
+  list.forEach(f => { const p = pendingPatches.get(f.id); if (p) Object.assign(f, p.fields); });
+  pendingRows.forEach((f, id) => { if (!ids.has(id)) list.push(f); });
+  return list;
+}
+
+function setConnState(ok) {
+  const el = document.getElementById('live-indicator');
+  if (!el) return;
+  el.textContent = ok ? 'LIVE' : 'OFFLINE / TERTUNDA';
+  el.style.color = ok ? '' : 'var(--red)';
+}
 // ==========================================
 // 2. LOGIKA LOGIN & OTENTIKASI
 // ==========================================
@@ -715,6 +768,8 @@ function logout() {
   localStorage.removeItem('nadi_user_session');
   
   currentUser = null;
+  fleets = []; lastDbVersion = '';
+  pendingRows.clear(); pendingPatches.clear();
   document.getElementById('sidebar').style.display = 'none';
   document.getElementById('login-user').value = '';
   document.getElementById('login-pass').value = '';
@@ -747,15 +802,25 @@ function applyTerminology() {
 // ==========================================
 // 3. FUNGSI JAM, MODAL, DAN SIDEBAR
 // ==========================================
-function tickClock() { 
-  const n = new Date(); 
-  const hh = String(n.getHours()).padStart(2,'0'), mm = String(n.getMinutes()).padStart(2,'0'), ss = String(n.getSeconds()).padStart(2,'0'); 
-  const days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
-  const months = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
-  
-  if (document.getElementById('tv-time')) document.getElementById('tv-time').textContent = `${hh}:${mm}:${ss}`; 
-  if (document.getElementById('tv-date')) document.getElementById('tv-date').textContent = `${days[n.getDay()]}, ${String(n.getDate()).padStart(2,'0')} ${months[n.getMonth()]} ${n.getFullYear()}`;
-  if (document.getElementById('sec-datetime')) document.getElementById('sec-datetime').textContent = `Waktu Sistem: ${hh}:${mm}`; 
+const _wibFmt = new Intl.DateTimeFormat('id-ID', {
+  timeZone: 'Asia/Jakarta', weekday: 'long', day: '2-digit', month: 'long', year: 'numeric',
+  hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23'
+});
+
+function tickClock() {
+  let hh = '--', mm = '--', ss = '--', dateTxt = '-- --- ----';
+  if (clockSynced) {
+    const p = {};
+    _wibFmt.formatToParts(new Date(nowMs())).forEach(x => { p[x.type] = x.value; });
+    hh = p.hour; mm = p.minute; ss = p.second;
+    dateTxt = `${p.weekday}, ${p.day} ${p.month} ${p.year}`;
+  }
+  const elT = document.getElementById('tv-time');
+  const elD = document.getElementById('tv-date');
+  const elS = document.getElementById('sec-datetime');
+  if (elT) elT.textContent = `${hh}:${mm}:${ss}`;
+  if (elD) elD.textContent = dateTxt;
+  if (elS) elS.textContent = clockSynced ? `Waktu Sistem: ${hh}:${mm}` : 'Waktu Sistem: menyinkronkan…';
 }
 setInterval(tickClock, 1000); tickClock();
  
@@ -803,7 +868,7 @@ function setView(v) {
   if(document.getElementById(`view-${v}`)) {
     document.getElementById(`view-${v}`).classList.add('active'); 
   }
-    if(v === 'armada') { renderCharts(); fetchDatabase(true); } 
+    if(v === 'armada') { loadAnalitikRange(); } 
   renderAll(); 
 }
  
@@ -894,7 +959,7 @@ function playAlarm(level) {
     }
     
     currentOscillator = osc;
-    osc.onended = () => { currentOscillator = null; };
+    osc.onended = () => { currentOscillator = null; try { ctx.close(); } catch (e) {} };
   } catch(e) {} 
 }
 
@@ -902,11 +967,8 @@ function getSize(type) { for (const [sz, arr] of Object.entries(FLEET_SIZES)) { 
 
 // SOLUSI BUG TIMER: Sinkronisasi format ISO lokal murni (WIB +07:00)
 function getLocalIso() {
-  const now = new Date();
-  const d = new Date(now.toLocaleString("en-US", {timeZone: "Asia/Jakarta"}));
-  const pad = n => String(n).padStart(2, '0');
-  // Menambahkan +07:00 agar Google Sheets dan Browser sepakat ini adalah WIB
-  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}+07:00`;
+  // Waktu SERVER (WIB), bukan jam perangkat
+  return fmtWIB(new Date(nowMs()).toISOString()).replace(' ', 'T') + '+07:00';
 }
 
 // SOLUSI BUG TIMER: Membaca waktu dari DB secara presisi
@@ -928,7 +990,7 @@ function getSafeDate(isoStr) {
 function elapsed(startIso, endIso) {
   const start = getSafeDate(startIso);
   if (!start) return 0;
-  const end = endIso ? getSafeDate(endIso) : new Date();
+  const end = endIso ? getSafeDate(endIso) : new Date(nowMs());
   if (!end) return 0;
   return Math.max(0, Math.floor((end.getTime() - start.getTime()) / 60000));
 }
@@ -956,6 +1018,30 @@ function fmtWIB(iso) {
   const hh = p.hour === '24' ? '00' : p.hour;
   return `${p.year}-${p.month}-${p.day} ${hh}:${p.minute}:${p.second}`;
 }
+function mapRow(row) {
+  return {
+    id: row.id,
+    secName: row.securityname,
+    driverName: row.driver,
+    plateNumber: row.plate,
+    fleetType: row.type,
+    fleetSize: row.size,
+    arrivalTime: row.arrivaltime,
+    checkerName: row.checkername,
+    status: (row.status || '').toString().toLowerCase().trim(),
+    unloadStartTime: row.unloadstart || null,
+    unloadEndTime: row.unloadend || null,
+    origin: row['origin/destination'] || row.origin || row.origindestination,
+    lokasi: (row.lokasi || 'Gedebage').toString().trim(),
+    departureTime: row.departuretime || null,
+    ltAntrian: row.lt_antrian_menit,
+    ltProses: row.lt_proses_menit,
+    ltTotal: row.lt_total_menit,
+    ltBerangkat: row.lt_keberangkatan_menit
+  };
+}
+
+// Sinkronisasi data LIVE: 1 request. Server membalas 'not_modified' bila tidak ada perubahan.
 async function fetchDatabase(force = false) {
   if (!currentUser) return false;
 
@@ -967,46 +1053,32 @@ async function fetchDatabase(force = false) {
   dbFetchInFlight = (async () => {
     let ok = false;
     try {
-      const response = await fetch(API_URL + '?_ts=' + Date.now(), { method: 'GET', cache: 'no-store' });
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const t0 = Date.now();
+      let url = API_URL + '?mode=sync&_ts=' + t0;
+      if (!force && lastDbVersion) url += '&v=' + encodeURIComponent(lastDbVersion);
 
-      const data = await response.json();
-      if (!Array.isArray(data)) throw new Error('Format data tidak valid (cek deployment Apps Script)');
+      const response = await fetch(url, { method: 'GET', cache: 'no-store' });
+      if (!response.ok) throw new Error('HTTP ' + response.status);
+      const j = await response.json();
+      syncServerClock(j.serverNow, t0, Date.now());
 
-      fleets = data.map(row => ({
-        id: row.id,
-        secName: row.securityname,
-        driverName: row.driver,
-        plateNumber: row.plate,
-        fleetType: row.type,
-        fleetSize: row.size,
-        arrivalTime: row.arrivaltime,
-        checkerName: row.checkername,
-        status: (row.status || '').toString().toLowerCase().trim(),
-        unloadStartTime: row.unloadstart || null,
-        unloadEndTime: row.unloadend || null,
-        origin: row['origin/destination'] || row.origin || row.origindestination,
-        lokasi: (row.lokasi || 'Gedebage').toString().trim(),
-        departureTime: row.departuretime || null,
-        ltAntrian: row.lt_antrian_menit,
-        ltProses: row.lt_proses_menit,
-        ltTotal: row.lt_total_menit,
-        ltBerangkat: row.lt_keberangkatan_menit
-      }));
-
-      populateFilters();
-      if (document.getElementById('view-armada').classList.contains('active')) processAnalitik();
-      renderAll();
-      ok = true;
-
-    } catch (e) {
-      console.error("Koneksi terputus.", e);
-    } finally {
-      dbFetchInFlight = null;
-      if (dbFetchQueued && currentUser) {
-        dbFetchQueued = false;
-        fetchDatabase(true);
+      if (j.status === 'not_modified') {
+        ok = true;
+      } else if (j.status === 'ok' && Array.isArray(j.data)) {
+        fleets = mergePending(j.data.map(mapRow));
+        lastDbVersion = j.version || '';
+        renderAll();
+        ok = true;
+      } else {
+        throw new Error(j.message || 'Format data tidak valid (cek deployment Apps Script)');
       }
+    } catch (e) {
+      console.error('Koneksi terputus.', e);
+    } finally {
+      pollFailCount = ok ? 0 : pollFailCount + 1;
+      setConnState(ok);
+      dbFetchInFlight = null;
+      if (dbFetchQueued && currentUser) { dbFetchQueued = false; fetchDatabase(true); }
     }
     return ok;
   })();
@@ -1014,11 +1086,72 @@ async function fetchDatabase(force = false) {
   return dbFetchInFlight;
 }
 
-function getFilteredFleets() {
+function filterByLocation(list) {
   if (!currentUser) return [];
-  if (currentUser.location === 'ALL') return fleets;
+  if (currentUser.location === 'ALL') return list;
   const loc = currentUser.location.toString().trim().toLowerCase();
-  return fleets.filter(f => (f.lokasi || '').toString().trim().toLowerCase() === loc);
+  return list.filter(f => (f.lokasi || '').toString().trim().toLowerCase() === loc);
+}
+function getFilteredFleets() { return filterByLocation(fleets); }          // data live (TV/Checker/Security)
+function getAnalitikFleets() { return filterByLocation(analitikFleets); }  // data historis (Analitik)
+
+// Data historis untuk menu Analitik (default 30 hari terakhir, WIB)
+let analitikFleets = [];
+async function loadAnalitikRange() {
+  if (!currentUser) return;
+  const s = document.getElementById('filter-start');
+  const e = document.getElementById('filter-end');
+  const ymd = ms => fmtWIB(new Date(ms).toISOString()).slice(0, 10);
+  if (!e.value) e.value = ymd(nowMs());
+  if (!s.value) s.value = ymd(nowMs() - 30 * 86400000);
+
+  try {
+    toast('⏳ Memuat data analitik...');
+    const t0 = Date.now();
+    const res = await fetch(`${API_URL}?mode=range&from=${s.value}&to=${e.value}&_ts=${t0}`, { cache: 'no-store' });
+    const j = await res.json();
+    syncServerClock(j.serverNow, t0, Date.now());
+    if (j.status !== 'ok' || !Array.isArray(j.data)) throw new Error(j.message || 'Format tidak valid');
+    analitikFleets = j.data.map(mapRow);
+    populateFilters();
+    processAnalitik();
+  } catch (err) {
+    console.error(err);
+    toast('❌ Gagal memuat data analitik', 'err');
+  }
+}
+
+// ---------- POST dengan timeout + retry (aman diulang karena backend idempoten) ----------
+async function postAPI(payload, timeoutMs = 20000) {
+  const ctrl = new AbortController();
+  const tm = setTimeout(() => ctrl.abort(), timeoutMs);
+  const t0 = Date.now();
+  try {
+    const res = await fetch(API_URL, {
+      method: 'POST', keepalive: true, cache: 'no-store',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify(payload), signal: ctrl.signal
+    });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const data = await res.json();
+    syncServerClock(data.serverNow, t0, Date.now());
+    return data;
+  } finally { clearTimeout(tm); }
+}
+
+async function postWithRetry(payload, tries = 3) {
+  let lastErr;
+  for (let i = 0; i < tries; i++) {
+    try {
+      const data = await postAPI(payload);
+      if (data.code === 'SERVER_BUSY' && i < tries - 1) { await sleep(800 * (i + 1) + Math.random() * 400); continue; }
+      return data;
+    } catch (e) {
+      lastErr = e;
+      if (i < tries - 1) await sleep(800 * (i + 1) + Math.random() * 400);
+    }
+  }
+  throw lastErr;
 }
  
 function renderAll() { renderChecker(); renderTV(); renderSecurityTasks(); }
@@ -1031,130 +1164,92 @@ function submitArrival() {
   if (btn && btn.dataset.sending === '1') return;
 
   const secName = document.getElementById('f-secname').value.trim();
-  const driver = document.getElementById('f-driver').value.trim();
-  const plate = document.getElementById('f-plate').value.trim().toUpperCase();
-  const type = document.getElementById('f-type').value;
-
-  let origin = selectedDestinations.join(', ');
+  const driver  = document.getElementById('f-driver').value.trim();
+  const plate   = document.getElementById('f-plate').value.trim().toUpperCase();
+  const type    = document.getElementById('f-type').value;
+  const origin  = selectedDestinations.join(', ');
 
   if (!secName || !driver || !plate || !origin) {
     toast('❌ Semua kolom wajib diisi! (Pilih minimal 1 Origin/Tujuan)', 'err');
     return;
   }
 
-  // Proteksi lokal instan dari double-submit.
-  if (pendingArrivals.has(plate)) {
+  const plateKey = normPlate(plate);
+  if (plateKey.length < 3 || plateKey.length > 12) {
+    toast('❌ Format plat nomor tidak valid', 'err');
+    return;
+  }
+  if (pendingArrivals.has(plateKey)) {
     toast('⏳ Plat ini sedang dikirim ke server, tunggu sinkronisasi.', 'err');
     return;
   }
-
-  // Validasi dari data yang sudah ada di perangkat.
-  const isDuplicate = fleets.some(
-    f => (f.plateNumber || '').toString().toUpperCase().trim() === plate &&
-         (f.status || '').toString().toLowerCase().trim() !== 'done'
-  );
-
-  if (isDuplicate) {
-    toast('❌ Armada Plat Nomor ini sedang aktif di sistem antrian!', 'err');
+  const dup = fleets.find(f => normPlate(f.plateNumber) === plateKey && isActiveStatus(f.status));
+  if (dup) {
+    toast(`❌ Plat ${dup.plateNumber} masih aktif di sistem (status: ${dup.status})`, 'err');
     return;
   }
 
-  if (btn) {
-    btn.dataset.sending = '1';
-    btn.disabled = false;
-  }
+  if (btn) btn.dataset.sending = '1';
+  pendingArrivals.add(plateKey);
 
-  pendingArrivals.add(plate);
-
-  const newId = 'ARR-' + Date.now().toString(36).toUpperCase() + '-' +
-                Math.floor(Math.random() * 10000);
-
-  const optimisticTime = getLocalIso();
-
+  const newId = 'ARR-' + nowMs().toString(36).toUpperCase() + '-' + Math.random().toString(36).slice(2, 8).toUpperCase();
   const optimisticFleet = {
-    id: newId,
-    secName: secName,
-    driverName: driver,
-    plateNumber: plate,
-    fleetType: type,
-    fleetSize: getSize(type),
-    arrivalTime: optimisticTime,
-    checkerName: '',
-    status: 'antrian',
-    origin: origin,
-    lokasi: currentUser.location,
-    departureTime: null
+    id: newId, secName: secName, driverName: driver, plateNumber: plate,
+    fleetType: type, fleetSize: getSize(type), arrivalTime: getLocalIso(),
+    checkerName: '', status: 'antrian', origin: origin,
+    lokasi: currentUser.location, departureTime: null
   };
+  const backup = { plate: document.getElementById('f-plate').value, driver: driver, dests: selectedDestinations.slice() };
 
-  // UI bergerak SEKETIKA — tidak menunggu response server.
+  pendingRows.set(newId, optimisticFleet);
   fleets.push(optimisticFleet);
 
   document.getElementById('f-plate').value = '';
   document.getElementById('f-driver').value = '';
   document.getElementById('f-origin').value = '';
-
   selectedDestinations = [];
   renderDestTags();
   renderAll();
-
   toast('⚡ Kedatangan dicatat. Sinkronisasi server berjalan...');
 
-  // POST berjalan di background. Petugas langsung bisa input armada lain.
-  fetch(API_URL, {
-    method: 'POST',
-    keepalive: true,
-    cache: 'no-store',
-    headers: {
-      'Content-Type': 'text/plain;charset=utf-8'
-    },
-    body: JSON.stringify({
-      action: 'addArrival',
-      id: newId,
-      securityName: secName,
-      driver: driver,
-      plate: plate,
-      origin: origin,
-      type: type,
-      size: getSize(type),
-      arrivalTime: optimisticTime,
-      lokasi: currentUser.location
-    })
-  })
-  .then(async res => {
-    const data = await res.json();
+  const rollback = (restoreForm) => {
+    pendingRows.delete(newId);
+    fleets = fleets.filter(f => f.id !== newId);
+    if (restoreForm) {
+      document.getElementById('f-plate').value = backup.plate;
+      document.getElementById('f-driver').value = backup.driver;
+      selectedDestinations = backup.dests;
+      renderDestTags();
+    }
+    renderAll();
+  };
 
+  postWithRetry({
+    action: 'addArrival', id: newId, securityName: secName, driver: driver,
+    plate: plate, origin: origin, type: type, size: getSize(type), lokasi: currentUser.location
+  })
+  .then(data => {
     if (data.status === 'error') {
-      // Backend adalah sumber kebenaran untuk anti-duplikat.
-      fleets = fleets.filter(f => f.id !== newId);
-      renderAll();
+      rollback(data.code !== 'DUPLICATE_ACTIVE_PLATE');
       toast('❌ ' + data.message, 'err');
+      fetchDatabase(true);
       return;
     }
-
-    if (data.arrivalTime) {
-      const localIdx = fleets.findIndex(f => f.id === newId);
-      if (localIdx > -1) fleets[localIdx].arrivalTime = data.arrivalTime;
-    }
-
+    const f = fleets.find(x => x.id === newId);
+    if (f && data.arrivalTime) f.arrivalTime = data.arrivalTime;
     renderAll();
-    fetchDatabase(true);
-    toast('✅ Kedatangan berhasil dicatat di server!');
+    toast('✅ Kedatangan tersimpan di server');
+    setTimeout(() => pendingRows.delete(newId), 6000);   // tahan sebentar agar tidak berkedip saat polling
   })
   .catch(err => {
-    // Jangan langsung rollback; request bisa saja sudah diterima server
-    // tetapi respons gagal kembali ke perangkat.
     console.error('addArrival:', err);
-    toast('⚠️ Konfirmasi server terputus. Sinkronisasi otomatis berjalan.', 'err');
+    rollback(true);
+    toast('⚠️ Koneksi bermasalah. Data dikembalikan ke form; cek apakah sudah masuk sebelum kirim ulang.', 'err');
     fetchDatabase(true);
   })
   .finally(() => {
-    pendingArrivals.delete(plate);
-
-    if (btn) {
-      btn.disabled = false;
-      btn.dataset.sending = '0';
-      btn.innerHTML = '✅ Catat Kedatangan';
-    }
+    pendingArrivals.delete(plateKey);
+    if (btn) { btn.dataset.sending = '0'; btn.innerHTML = '✅ Catat Kedatangan'; }
   });
 }
 
@@ -1191,26 +1286,27 @@ function renderSecurityTasks() {
 }
 
 function submitDeparture(id) {
-  // Fitur Anti-Double Click
   const btn = document.querySelector(`button[onclick="submitDeparture('${id}')"]`);
-  if(btn && btn.disabled) return;
-  if(btn) { btn.disabled = true; btn.innerHTML = '⏳ Proses...'; }
+  if (btn && btn.dataset.processing === '1') return;
+  if (btn) { btn.dataset.processing = '1'; btn.innerHTML = '⏳ Proses...'; }
 
-  // ⚡ OPTIMISTIC UI
-  const fIdx = fleets.findIndex(f => f.id === id);
-  if(fIdx > -1) fleets[fIdx].departureTime = getLocalIso();
+  const fields = { departureTime: getLocalIso() };
+  const seq = setPatch(id, fields);
+  const f = fleets.find(x => x.id === id);
+  if (f) Object.assign(f, fields);
   renderAll();
   toast('⏳ Menyimpan ke server...');
 
-  // ☁️ Background Fetch
-  fetch(API_URL, { 
-    method: 'POST', 
-    body: JSON.stringify({ action: 'updateDeparture', id: id, departureTime: getLocalIso() }) 
+  postWithRetry({ action: 'updateDeparture', id: id })
+  .then(data => {
+    if (data.status !== 'success') throw new Error(data.message || 'Gagal mencatat keberangkatan');
+    toast('✅ Keberangkatan Berhasil Dicatat!');
+    releasePatch(id, seq, 6000);
   })
-  .then(() => { toast('✅ Keberangkatan Berhasil Dicatat!'); fetchDatabase(true); })
-  .catch(err => toast('❌ ' + err, 'err'))
-  .finally(() => {
-    if(btn) { btn.disabled = false; btn.innerHTML = '🚀 Catat Jam Keberangkatan'; }
+  .catch(err => {
+    releasePatch(id, seq, 0);
+    toast('❌ ' + (err.message || err), 'err');
+    fetchDatabase(true);
   });
 }
  
@@ -1245,165 +1341,67 @@ function renderChecker() {
 }
  
 function startUnloading(id) {
-  const btn = document.querySelector(
-    `button[onclick="startUnloading('${id}')"]`
-  );
-
+  const btn = document.querySelector(`button[onclick="startUnloading('${id}')"]`);
   if (btn && btn.dataset.processing === '1') return;
+  if (btn) btn.dataset.processing = '1';
 
   const cNameEl = document.getElementById(`cn-${id}`);
   const cName = cNameEl ? cNameEl.value.trim() : '';
-  const nowIso = getLocalIso();
-
-  if (btn) {
-    btn.dataset.processing = '1';
-    btn.disabled = false;
-  }
-
-  // ===============================
-  // 1. UI LANGSUNG BERUBAH
-  // ===============================
-  const fIdx = fleets.findIndex(f => f.id === id);
-
-  if (fIdx > -1) {
-    fleets[fIdx].status = 'unloading';
-    fleets[fIdx].checkerName = cName;
-    fleets[fIdx].unloadStartTime = nowIso;
-  }
-
+  const fields = { status: 'unloading', checkerName: cName, unloadStartTime: getLocalIso() };
+  const seq = setPatch(id, fields);
+  const f = fleets.find(x => x.id === id);
+  if (f) Object.assign(f, fields);
   renderAll();
-
   toast(`⚡ ${currentTerm} dimulai`);
 
-  // ===============================
-  // 2. BACKEND DI BACKGROUND
-  // ===============================
-  fetch(API_URL, {
-    method: 'POST',
-    keepalive: true,
-    cache: 'no-store',
-    headers: {
-      'Content-Type': 'text/plain;charset=utf-8'
-    },
-    body: JSON.stringify({
-      action: 'updateStatus',
-      id: id,
-      status: 'unloading',
-      checkerName: cName
-    })
-  })
-  .then(async response => {
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}`);
+  postWithRetry({ action: 'updateStatus', id: id, status: 'unloading', checkerName: cName })
+  .then(data => {
+    if (data.status !== 'success') throw new Error(data.message || 'Update gagal');
+    if (String(data.code || '').startsWith('ALREADY_')) {
+      releasePatch(id, seq, 0);
+      toast(data.checkerName && data.checkerName !== cName ? `ℹ️ Sudah dimulai oleh ${data.checkerName}` : 'ℹ️ Status sudah tercatat sebelumnya');
+      fetchDatabase(true);
+      return;
     }
-
-    const data = await response.json();
-
-    if (data.status !== 'success') {
-      throw new Error(data.message || 'Update gagal');
-    }
-
     toast(`✅ ${currentTerm} tersimpan`);
-
-    // Reconcile tanpa menunggu polling berikutnya
-    fetchDatabase(true);
+    releasePatch(id, seq, 6000);
   })
   .catch(err => {
     console.error('startUnloading:', err);
-
-    toast(
-      `⚠️ Sinkronisasi ${currentTerm} gagal, mencoba refresh data...`,
-      'err'
-    );
-
+    releasePatch(id, seq, 0);
+    toast('⚠️ ' + (err.message || 'Sinkronisasi gagal') + ' — memuat ulang data...', 'err');
     fetchDatabase(true);
-  })
-  .finally(() => {
-    if (btn) {
-      btn.dataset.processing = '0';
-      btn.disabled = false;
-      btn.innerHTML =
-        `🔄 MULAI ${currentTerm.toUpperCase()}`;
-    }
   });
 }
- 
+
 function finishUnloading(id) {
-  const btn = document.querySelector(
-    `button[onclick="finishUnloading('${id}')"]`
-  );
-
+  const btn = document.querySelector(`button[onclick="finishUnloading('${id}')"]`);
   if (btn && btn.dataset.processing === '1') return;
+  if (btn) btn.dataset.processing = '1';
 
-  const nowIso = getLocalIso();
-
-  if (btn) {
-    btn.dataset.processing = '1';
-    btn.disabled = false;
-  }
-
-  // =====================================
-  // INSTANT LOCAL UPDATE
-  // =====================================
-  const fIdx = fleets.findIndex(f => f.id === id);
-
-  if (fIdx > -1) {
-    fleets[fIdx].status = 'done';
-    fleets[fIdx].unloadEndTime = nowIso;
-  }
-
+  const fields = { status: 'done', unloadEndTime: getLocalIso() };
+  const seq = setPatch(id, fields);
+  const f = fleets.find(x => x.id === id);
+  if (f) Object.assign(f, fields);
   renderAll();
-
   toast(`⚡ ${currentTerm} selesai`);
 
-  // =====================================
-  // BACKGROUND SERVER UPDATE
-  // =====================================
-  fetch(API_URL, {
-    method: 'POST',
-    keepalive: true,
-    cache: 'no-store',
-    headers: {
-      'Content-Type': 'text/plain;charset=utf-8'
-    },
-    body: JSON.stringify({
-      action: 'updateStatus',
-      id: id,
-      status: 'done'
-    })
-  })
-  .then(async response => {
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}`);
+  postWithRetry({ action: 'updateStatus', id: id, status: 'done' })
+  .then(data => {
+    if (data.status !== 'success') throw new Error(data.message || 'Update gagal');
+    if (String(data.code || '').startsWith('ALREADY_')) {
+      releasePatch(id, seq, 0);
+      fetchDatabase(true);
+      return;
     }
-
-    const data = await response.json();
-
-    if (data.status !== 'success') {
-      throw new Error(data.message || 'Update gagal');
-    }
-
     toast(`✅ ${currentTerm} selesai tersimpan`);
-
-    fetchDatabase(true);
+    releasePatch(id, seq, 6000);
   })
   .catch(err => {
     console.error('finishUnloading:', err);
-
-    toast(
-      '⚠️ Konfirmasi server gagal, melakukan sinkronisasi...',
-      'err'
-    );
-
+    releasePatch(id, seq, 0);
+    toast('⚠️ ' + (err.message || 'Sinkronisasi gagal') + ' — memuat ulang data...', 'err');
     fetchDatabase(true);
-  })
-  .finally(() => {
-    if (btn) {
-      btn.dataset.processing = '0';
-      btn.disabled = false;
-      btn.innerHTML =
-        `✅ SELESAI ${currentTerm.toUpperCase()}`;
-    }
   });
 }
  
@@ -1523,7 +1521,7 @@ function renderCharts() {
 }
  
 function populateFilters() {
-  const currentData = getFilteredFleets();
+    const currentData = getAnalitikFleets();
   if(!currentData || currentData.length === 0) return;
   const origins = new Set(), types = new Set(), sizes = new Set(), checkers = new Set(), lokasis = new Set();
  
@@ -1563,7 +1561,7 @@ function resetAnalitikFilters() {
  document.getElementById('filter-size-analitik').value = 'all';
  document.getElementById('filter-checker-analitik').value = 'all';
  document.getElementById('filter-lokasi-analitik').value = 'all';
-  processAnalitik();
+    loadAnalitikRange();
 }
  
 // ---------- Helper lead time (dipakai TV-agnostik: Analitik & Ekspor) ----------
@@ -1594,7 +1592,7 @@ function isKpiFail(r, L) {
 }
 
 function processAnalitik() {
-  const currentData = getFilteredFleets();
+  const currentData = getAnalitikFleets();
   if (!currentData) return;
 
   const val = (id, def) => { const el = document.getElementById(id); return el ? el.value : def; };
@@ -1685,7 +1683,7 @@ function generateAI(data) {
   let html = `
     <b>📊 Kesimpulan Matematis (${currentTerm}):</b><br>
     • Total Volume (sesuai filter): <b>${total} armada</b> — ${selesai} selesai · ${proses} sedang proses · ${antri} masih antri<br>
-    • Total baris tersedia untuk akun Anda: <b>${getFilteredFleets().length}</b> (samakan dengan jumlah baris spreadsheet pada lokasi yang sama)<br>
+    • Total baris tersedia untuk akun Anda: <b>${getAnalitikFleets().length}</b> (samakan dengan jumlah baris spreadsheet pada lokasi yang sama)<br>
     • Rasio Pelanggaran SLA: <b>${violationRate}%</b> (${fail} dari ${dinilai} armada yang sudah dimulai)<br>
     • Rata-rata lead time: antrian <b>${avg(sumQ, nQ)} mnt</b> · proses <b>${avg(sumU, nU)} mnt</b> · total <b>${avg(sumT, nT)} mnt</b>${nD ? ` · tunggu berangkat <b>${avg(sumD, nD)} mnt</b>` : ''}<br>
   `;
@@ -1885,7 +1883,7 @@ function downloadFilteredData() {
   ];
 
   const dash = v => (v === undefined || v === null || v === '') ? null : v;
-  const fname = `DB_NADI_Report_${fmtWIB(new Date().toISOString()).slice(0, 10)}`;
+  const fname = `DB_NADI_Report_${fmtWIB(new Date(nowMs()).toISOString()).slice(0, 10)}`;
 
   // ---- Excel (.xlsx): jam disimpan sebagai tanggal asli berformat WIB ----
   if (typeof XLSX !== 'undefined') {
@@ -2098,33 +2096,29 @@ function checkSession() {
     else if (user.role === 'checker') setView('checker');
     else setView('tv');
     
-    fetchDatabase();
+fetchDatabase();
   }
 }
 
 // Jalankan pengecekan sesi saat web pertama kali dibuka
 checkSession();
 
-// Polling ringan: cek versi saja tiap 3 detik, unduh data hanya jika ada perubahan.
-// Berlaku untuk SEMUA halaman (Security, Checker, TV, Analitik).
-let lastDbVersion = '';
-
-async function pollDbVersion() {
-  if (!currentUser || document.hidden || dbFetchInFlight) return;
-  try {
-    const r = await fetch(API_URL + '?mode=ver&_ts=' + Date.now(), { cache: 'no-store' });
-    const j = await r.json();
-    if (!j || !j.version) { fetchDatabase(false); return; }   // cadangan jika backend belum diperbarui
-    if (j.version !== lastDbVersion) {
-      const ok = await fetchDatabase(true);
-      if (ok) lastDbVersion = j.version;
+// Polling adaptif: 1 request ringan per ~4 detik (+jitter), berhenti saat tab tersembunyi,
+// melambat otomatis (backoff) bila server/jaringan bermasalah.
+function schedulePoll() {
+  clearTimeout(pollTimer);
+  const delay = POLL_MS + Math.min(pollFailCount, 6) * 3000 + Math.random() * 1000;
+  pollTimer = setTimeout(async () => {
+    if (currentUser && !document.hidden && navigator.onLine !== false) {
+      try { await fetchDatabase(false); } catch (e) {}
     }
-  } catch (e) { /* coba lagi 3 detik kemudian */ }
+    schedulePoll();
+  }, delay);
 }
-setInterval(pollDbVersion, 3000);
+schedulePoll();
 
-document.addEventListener('visibilitychange', () => { if (!document.hidden && currentUser) pollDbVersion(); });
-window.addEventListener('online', () => { if (currentUser) pollDbVersion(); });
+document.addEventListener('visibilitychange', () => { if (!document.hidden && currentUser) fetchDatabase(false); });
+window.addEventListener('online', () => { if (currentUser) fetchDatabase(true); });
 
 // Live timer TV diperbarui setiap detik.
 setInterval(() => {
