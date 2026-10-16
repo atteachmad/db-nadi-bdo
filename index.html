@@ -4,9 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>DB-NADI — Monitoring Armada</title>
-    <title>DB-NADI — Monitoring Armada</title>
 
-  <!-- Logo di tab browser (favicon SVG) -->
+  <!-- Logo di tab browser (favicon) -->
   <link rel="icon" type="image/svg+xml" href="at.svg?v=1">
   <link rel="icon" type="image/png" href="at.png?v=1">
 
@@ -416,11 +415,11 @@
       <div style="display: flex; flex-wrap: wrap; gap: 15px; margin-bottom: 20px; align-items: flex-end;">
         <div style="flex: 1; min-width: 140px;">
           <label class="form-label">Tanggal Mulai</label>
-          <input type="date" id="filter-start" class="skeuo-input" onchange="loadAnalitikRange()">
+          <input type="date" id="filter-start" class="skeuo-input" onchange="markAnalitikStale()">
         </div>
         <div style="flex: 1; min-width: 140px;">
           <label class="form-label">Tanggal Akhir</label>
-          <input type="date" id="filter-end" class="skeuo-input" onchange="loadAnalitikRange()">
+          <input type="date" id="filter-end" class="skeuo-input" onchange="markAnalitikStale()">
         </div>
         
         <div style="flex: 1; min-width: 140px;">
@@ -456,9 +455,13 @@
         </div>
       </div>
       
-      <div style="display: flex; justify-content: flex-end; gap: 10px; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 15px;">
-        <button class="skeuo-btn btn-outline" onclick="resetAnalitikFilters()"><i class="fa-solid fa-rotate-left"></i> Reset Filter</button>
-        <button class="skeuo-btn btn-primary" onclick="downloadFilteredData()"><i class="fa fa-download"></i> Ekspor Excel Sesuai Filter</button>
+            <div style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 15px;">
+        <div id="analitik-status" style="font-size: 12px; font-family: 'IBM Plex Mono', monospace; color: var(--text2); flex: 1; min-width: 220px;">Pilih rentang tanggal, lalu klik Generate Data.</div>
+        <div style="display: flex; flex-wrap: wrap; gap: 10px;">
+          <button id="btn-generate" class="skeuo-btn btn-success" onclick="loadAnalitikRange()"><i class="fa-solid fa-database"></i> Generate Data</button>
+          <button class="skeuo-btn btn-outline" onclick="resetAnalitikFilters()"><i class="fa-solid fa-rotate-left"></i> Reset Filter</button>
+          <button class="skeuo-btn btn-primary" onclick="downloadFilteredData()"><i class="fa fa-download"></i> Ekspor Excel Sesuai Filter</button>
+        </div>
       </div>
     </div>
  
@@ -777,6 +780,7 @@ function logout() {
   currentUser = null;
   fleets = []; lastDbVersion = '';
   pendingRows.clear(); pendingPatches.clear();
+    analitikFleets = []; analitikLoadedKey = '';
   document.getElementById('sidebar').style.display = 'none';
   document.getElementById('login-user').value = '';
   document.getElementById('login-pass').value = '';
@@ -875,7 +879,7 @@ function setView(v) {
   if(document.getElementById(`view-${v}`)) {
     document.getElementById(`view-${v}`).classList.add('active'); 
   }
-    if(v === 'armada') { loadAnalitikRange(); } 
+        if(v === 'armada') { prepareAnalitikView(); }
   renderAll(); 
 }
  
@@ -1102,29 +1106,99 @@ function filterByLocation(list) {
 function getFilteredFleets() { return filterByLocation(fleets); }          // data live (TV/Checker/Security)
 function getAnalitikFleets() { return filterByLocation(analitikFleets); }  // data historis (Analitik)
 
-// Data historis untuk menu Analitik (default 30 hari terakhir, WIB)
+// ---------- ANALITIK: data diambil HANYA saat tombol Generate ditekan ----------
 let analitikFleets = [];
-async function loadAnalitikRange() {
-  if (!currentUser) return;
+let analitikLoading = false;
+let analitikLoadedKey = '';     // "tglMulai|tglAkhir" data yang sedang tampil
+let analitikTimer = null;
+
+function defaultAnalitikDates() {
+  const ymd = ms => fmtWIB(new Date(ms).toISOString()).slice(0, 10);
+  return { from: ymd(nowMs() - 6 * 86400000), to: ymd(nowMs()) };   // 7 hari terakhir (WIB)
+}
+
+function setAnalitikStatus(msg, kind) {
+  const el = document.getElementById('analitik-status');
+  if (!el) return;
+  const colors = { wait: 'var(--amber)', ok: 'var(--green)', warn: 'var(--yellow)', err: 'var(--red)', info: 'var(--text2)' };
+  el.style.color = colors[kind] || 'var(--text2)';
+  el.innerHTML = msg;
+}
+
+// Dipanggil saat menu Analitik dibuka: isi tanggal default, TANPA memanggil server
+function prepareAnalitikView() {
   const s = document.getElementById('filter-start');
   const e = document.getElementById('filter-end');
-  const ymd = ms => fmtWIB(new Date(ms).toISOString()).slice(0, 10);
-  if (!e.value) e.value = ymd(nowMs());
-  if (!s.value) s.value = ymd(nowMs() - 30 * 86400000);
+  if (!s || !e) return;
+  if (!s.value || !e.value) { const d = defaultAnalitikDates(); s.value = d.from; e.value = d.to; }
+  if (!analitikLoadedKey) {
+    setAnalitikStatus('Pilih rentang tanggal, lalu klik <b>Generate Data</b>.', 'info');
+    const box = document.getElementById('ai-insight-text');
+    if (box) box.innerHTML = 'Belum ada data. Pilih rentang tanggal lalu klik <b>Generate Data</b> untuk memulai analisa.';
+  } else {
+    markAnalitikStale();
+  }
+}
 
+// Dipanggil saat tanggal diubah: beri tahu user bahwa perlu Generate ulang
+function markAnalitikStale() {
+  if (analitikLoading) return;
+  const s = document.getElementById('filter-start').value;
+  const e = document.getElementById('filter-end').value;
+  if (!analitikLoadedKey) { setAnalitikStatus('Klik <b>Generate Data</b> untuk memuat data.', 'info'); return; }
+  if ((s + '|' + e) !== analitikLoadedKey) {
+    setAnalitikStatus('⚠️ Rentang tanggal berubah. Klik <b>Generate Data</b> untuk memuat data baru.', 'warn');
+  } else {
+    setAnalitikStatus('✅ Data sesuai rentang tanggal yang dipilih.', 'ok');
+  }
+}
+
+async function loadAnalitikRange() {
+  if (!currentUser || analitikLoading) return;
+  const s = document.getElementById('filter-start');
+  const e = document.getElementById('filter-end');
+  if (!s.value || !e.value) { toast('❌ Isi Tanggal Mulai dan Tanggal Akhir dulu', 'err'); return; }
+  if (s.value > e.value) { toast('❌ Tanggal Mulai tidak boleh lebih besar dari Tanggal Akhir', 'err'); return; }
+  const days = Math.round((new Date(e.value) - new Date(s.value)) / 86400000) + 1;
+  if (days > 366) { toast('❌ Rentang maksimal 366 hari', 'err'); return; }
+
+  analitikLoading = true;
+  const btn = document.getElementById('btn-generate');
+  if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Memuat...'; }
+
+  const from = s.value, to = e.value;
+  const t0 = Date.now();
+  const tick = () => setAnalitikStatus(
+    `⏳ Mengambil data ${from} s/d ${to} (${days} hari)... ${Math.floor((Date.now() - t0) / 1000)} dtk. Mohon tunggu, jangan tutup halaman.`, 'wait');
+  tick();
+  analitikTimer = setInterval(tick, 1000);
+
+  const ctrl = new AbortController();
+  const tm = setTimeout(() => ctrl.abort(), 180000);   // batas tunggu 3 menit
   try {
-    toast('⏳ Memuat data analitik...');
-    const t0 = Date.now();
-    const res = await fetch(`${API_URL}?mode=range&from=${s.value}&to=${e.value}&_ts=${t0}`, { cache: 'no-store' });
+    const res = await fetch(`${API_URL}?mode=range&from=${from}&to=${to}&_ts=${t0}`, { cache: 'no-store', signal: ctrl.signal });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
     const j = await res.json();
     syncServerClock(j.serverNow, t0, Date.now());
     if (j.status !== 'ok' || !Array.isArray(j.data)) throw new Error(j.message || 'Format tidak valid');
+
     analitikFleets = j.data.map(mapRow);
+    analitikLoadedKey = from + '|' + to;
     populateFilters();
     processAnalitik();
+    const sec = Math.max(1, Math.round((Date.now() - t0) / 1000));
+    setAnalitikStatus(`✅ ${j.data.length} data dimuat (${from} s/d ${to}) dalam ${sec} dtk.`, 'ok');
+    toast(`✅ ${j.data.length} data berhasil dimuat`);
   } catch (err) {
     console.error(err);
+    const msg = err.name === 'AbortError' ? 'Waktu tunggu habis. Persempit rentang tanggal lalu coba lagi.' : (err.message || 'Gagal memuat');
+    setAnalitikStatus('❌ ' + msg + ' Klik Generate Data untuk mencoba lagi.', 'err');
     toast('❌ Gagal memuat data analitik', 'err');
+  } finally {
+    clearTimeout(tm);
+    clearInterval(analitikTimer);
+    analitikLoading = false;
+    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-database"></i> Generate Data'; }
   }
 }
 
@@ -1561,14 +1635,15 @@ function populateFilters() {
 }
  
 function resetAnalitikFilters() {
- document.getElementById('filter-start').value = '';
-  document.getElementById('filter-end').value = '';
- document.getElementById('filter-origin-analitik').value = 'all';
- document.getElementById('filter-type-analitik').value = 'all';
- document.getElementById('filter-size-analitik').value = 'all';
- document.getElementById('filter-checker-analitik').value = 'all';
- document.getElementById('filter-lokasi-analitik').value = 'all';
-    loadAnalitikRange();
+  const d = defaultAnalitikDates();
+  document.getElementById('filter-start').value = d.from;
+  document.getElementById('filter-end').value = d.to;
+  ['origin', 'type', 'size', 'checker', 'lokasi'].forEach(k => {
+    const el = document.getElementById('filter-' + k + '-analitik');
+    if (el) el.value = 'all';
+  });
+  if (analitikLoadedKey) processAnalitik();
+  markAnalitikStale();
 }
  
 // ---------- Helper lead time (dipakai TV-agnostik: Analitik & Ekspor) ----------
@@ -1599,29 +1674,22 @@ function isKpiFail(r, L) {
 }
 
 function processAnalitik() {
+  if (!analitikLoadedKey) {
+    const box = document.getElementById('ai-insight-text');
+    if (box) box.innerHTML = 'Belum ada data. Pilih rentang tanggal lalu klik <b>Generate Data</b> untuk memulai analisa.';
+    return;
+  }
   const currentData = getAnalitikFleets();
   if (!currentData) return;
 
   const val = (id, def) => { const el = document.getElementById(id); return el ? el.value : def; };
-  const start = val('filter-start', ''), end = val('filter-end', '');
   const origin = val('filter-origin-analitik', 'all');
   const type = val('filter-type-analitik', 'all');
   const size = val('filter-size-analitik', 'all');
   const checker = val('filter-checker-analitik', 'all');
   const lokasi = val('filter-lokasi-analitik', 'all');
 
-  // Batas tanggal dibaca sebagai WIB (bukan UTC)
-  const startMs = start ? new Date(start + 'T00:00:00+07:00').getTime() : null;
-  const endMs = end ? new Date(end + 'T23:59:59.999+07:00').getTime() : null;
-
   currentFilteredData = currentData.filter(row => {
-    if (startMs !== null || endMs !== null) {
-      const a = getSafeDate(row.arrivalTime);
-      if (!a) return false;
-      const t = a.getTime();
-      if (startMs !== null && t < startMs) return false;
-      if (endMs !== null && t > endMs) return false;
-    }
     if (origin !== 'all' && row.origin !== origin) return false;
     if (type !== 'all' && row.fleetType !== type) return false;
     if (size !== 'all' && row.fleetSize !== size) return false;
