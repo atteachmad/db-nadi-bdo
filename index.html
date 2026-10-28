@@ -142,6 +142,9 @@
     td { padding: 14px 20px; font-size: 13px; border-bottom: 1px solid var(--border); }
     .kpi-cell { font-family: 'IBM Plex Mono', monospace; font-size: 13px; font-weight: 600; }
     .c-green { color: var(--green); } .c-yellow { color: var(--yellow); } .c-red { color: var(--red); font-weight: bold; animation: blink 1s infinite; }
+    .c-red-static { color: var(--red); font-weight: bold; }
+    .s-loading { background: rgba(168,85,247,0.15); color: #a855f7; }
+    .s-wait { background: rgba(234,179,8,0.15); color: var(--yellow); }
     @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
     
     .toast { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%) translateY(100px); padding: 12px 24px; border-radius: 30px; font-family: 'Rajdhani', sans-serif; font-size: 15px; font-weight: 700; z-index: 9999; transition: transform 0.3s; color: #fff; box-shadow: 0 4px 12px rgba(0,0,0,0.3); }
@@ -326,6 +329,8 @@
       <select class="form-select" id="filter-status" onchange="updateCheckerFilter()">
         <option value="all">🚦 Semua Task</option>
         <option value="antrian" id="opt-antrian">🔄 Mulai Unloading (Antri)</option>
+        <option value="preunload" id="opt-preunload">🟣 Selesai Unloading → Loading (Proses)</option>
+        <option value="waitload" id="opt-waitload">🟡 Mulai Loading (Menunggu)</option>
         <option value="unloading" id="opt-unloading">✅ Selesai Unloading (Proses)</option>
       </select>
     </div>
@@ -360,6 +365,8 @@
       <div class="kpi-card kc-total"><div class="kpi-card-label">Total Armada Aktif</div><div class="kpi-card-val" id="kc-total" style="color:var(--text)">0</div></div>
       <div class="kpi-card kc-antrian"><div class="kpi-card-label" id="lbl-antrian">⏳ Menunggu Unload</div><div class="kpi-card-val" id="kc-antrian" style="color:var(--blue)">0</div></div>
       <div class="kpi-card kc-unloading"><div class="kpi-card-label" id="lbl-unloading">🔄 Sedang Unload</div><div class="kpi-card-val" id="kc-unloading" style="color:var(--amber)">0</div></div>
+      <div class="kpi-card kc-loading" id="card-loading"><div class="kpi-card-label" id="lbl-loading">📦 Sedang Loading</div><div class="kpi-card-val" id="kc-loading" style="color:#a855f7">0</div></div>
+      <div class="kpi-card kc-wait" id="card-wait"><div class="kpi-card-label" id="lbl-wait">⏳ Menunggu Loading</div><div class="kpi-card-val" id="kc-wait" style="color:var(--yellow)">0</div></div>
       <div class="kpi-card kc-violations"><div class="kpi-card-label">🔴 Alarm / Overdue</div><div class="kpi-card-val" id="kc-violations" style="color:var(--red)">0</div></div>
     </div>
  
@@ -380,8 +387,9 @@
               <th onclick="sortTable(2)">Armada </th>
               <th onclick="sortTable(3)">Status </th>
               <th onclick="sortTable(4)">KPI Antrian (Max 180m) </th>
-              <th onclick="sortTable(5)" id="th-kpi-proses">KPI Unloading </th>
-           </tr>
+              <th onclick="sortTable(5)" id="th-kpi-unload">KPI Unloading </th>
+              <th onclick="sortTable(6)" id="th-kpi-load">KPI Loading </th>
+              </tr>
          </thead>
           <tbody id="tv-tbody"></tbody>
         </table>
@@ -473,6 +481,14 @@
       <div class="skeuo-card chart-card">
         <div class="chart-title">Top 5 Volume Origin <span style="font-size:10px; color:var(--text2);">(Klik Bar untuk filter)</span></div>
         <canvas id="chartOrigin"></canvas>
+      </div>
+      <div class="skeuo-card chart-card">
+        <div class="chart-title">Sumber Over-KPI per Proses <span style="font-size:10px; color:var(--text2);">(Klik irisan untuk filter)</span></div>
+        <div style="position:relative; height:280px;">
+          <canvas id="chartOverKpi"></canvas>
+          <div id="overkpi-empty" style="display:none; position:absolute; top:0; left:0; right:0; bottom:0; align-items:center; justify-content:center; text-align:center; color:var(--text2); font-size:13px;">Tidak ada pelanggaran KPI pada filter ini 🎉</div>
+        </div>
+        <div id="overkpi-summary" style="margin-top:12px; font-size:12px; line-height:1.6; color:var(--text);"></div>
       </div>
       <div class="skeuo-card chart-card" style="grid-column: 1 / -1;">
         <div class="chart-title">Kinerja Checker (Rata-Rata Waktu Proses) <span style="font-size:10px; color:var(--text2);">(Klik Bar untuk filter)</span></div>
@@ -610,7 +626,42 @@ const API_URL = 'https://script.google.com/macros/s/AKfycbxDdtdla2-hoRDz66czD4Tf
 const FLEET_SIZES = { small: ['Blandvan','L300'], medium: ['CDD','CDE','CDEL','CDDL', 'Engkel','Truck'], large: ['Fuso','Wingbox','Tronton'] };
 const KPI_UNLOAD = { small:20, medium:60, large:120 }; 
 const KPI_QUEUE  = 180; 
- 
+
+// KPI proses Loading (Soetta). ISI SESUAI SOP: nilai awal disamakan dengan KPI Unloading agar perilaku lama tidak berubah.
+const KPI_LOAD = { small: 20, medium: 60, large: 120 };
+
+const SOETTA_KEY = 'soekarno hatta 452';
+function isSoetta(lokasi) { return (lokasi || '').toString().trim().toLowerCase() === SOETTA_KEY; }
+
+// Pemetaan kolom waktu ke tahap Unloading / Loading.
+// Di Soetta: unloadstart/unloadend = LOADING (data lama tetap sah), preunloadstart/preunloadend = UNLOADING awal.
+function getStages(r) {
+  if (isSoetta(r.lokasi)) {
+    return { soeta: true,
+      uS: r.preStartTime || null, uE: r.preEndTime || null,
+      lS: r.unloadStartTime || null, lE: r.unloadEndTime || null,
+      first: r.preStartTime || r.unloadStartTime || null };
+  }
+  return { soeta: false,
+    uS: r.unloadStartTime || null, uE: r.unloadEndTime || null,
+    lS: null, lE: null,
+    first: r.unloadStartTime || null };
+}
+
+// Label & warna badge sesuai tahap yang sedang berjalan
+function stageInfo(f) {
+  const st = (f.status || '').toLowerCase();
+  if (st === 'antrian') return { label: 'antrian', cls: 's-antrian' };
+  if (st === 'preunload') return { label: 'unloading', cls: 's-unloading' };
+  if (st === 'waitload') return { label: 'menunggu loading', cls: 's-wait' };
+  if (st === 'unloading') return isSoetta(f.lokasi) ? { label: 'loading', cls: 's-loading' } : { label: 'unloading', cls: 's-unloading' };
+  return { label: 'done', cls: 's-done' };
+}
+
+// Pilihan alur checker (Soetta) sebelum menekan Mulai; disimpan agar tidak hilang saat layar digambar ulang
+const flowChoice = new Map();
+function setFlowChoice(id, v) { flowChoice.set(id, v); }
+
 let fleets = [];
 let checkerSearchTerm = '';
 let checkerStatusFilter = 'all';
@@ -788,26 +839,25 @@ function logout() {
 }
  
 function applyTerminology() {
-  const elSubtitle = document.getElementById('checker-subtitle');
-  if(elSubtitle) elSubtitle.textContent = `Daftar antrian dan operasional armada (${currentTerm}).`;
-  
-  const elOptQ = document.getElementById('opt-antrian');
-  if(elOptQ) elOptQ.textContent = `🔄 Mulai ${currentTerm} (Antri)`;
-  
-  const elOptU = document.getElementById('opt-unloading');
-  if(elOptU) elOptU.textContent = `✅ Selesai ${currentTerm} (Proses)`;
-  
-  const elTvHead = document.getElementById('tv-header-sub');
-  if(elTvHead) elTvHead.textContent = `Antrian & ${currentTerm} - Real Time`;
-  
-  const elLblQ = document.getElementById('lbl-antrian');
-  if(elLblQ) elLblQ.textContent = `⏳ Menunggu ${currentTerm}`;
-  
-  const elLblU = document.getElementById('lbl-unloading');
-  if(elLblU) elLblU.textContent = `🔄 Sedang ${currentTerm}`;
-  
-  const elThKpi = document.getElementById('th-kpi-proses');
-  if(elThKpi) elThKpi.textContent = `KPI ${currentTerm}`;
+  const loc = currentUser ? currentUser.location : '';
+  const isG = loc === 'Gedebage';
+  const isS = loc === 'Soekarno Hatta 452';
+  const titleTerm = isG ? 'Unloading' : (isS ? 'Unloading & Loading' : 'Unloading / Loading');
+  const setText = (id, t) => { const el = document.getElementById(id); if (el) el.textContent = t; };
+
+  setText('checker-subtitle', `Daftar antrian dan operasional armada (${titleTerm}).`);
+  setText('opt-antrian', '🔄 Mulai Proses (Antri)');
+  setText('opt-unloading', `✅ Selesai ${isS ? 'Loading' : (isG ? 'Unloading' : 'Proses Utama')} (Proses)`);
+  const op = document.getElementById('opt-preunload');
+  if (op) { op.textContent = '🟣 Selesai Unloading (Proses)'; op.hidden = isG; }
+  const ow = document.getElementById('opt-waitload');
+  if (ow) { ow.textContent = '🟡 Mulai Loading (Menunggu)'; ow.hidden = isG; }
+
+  setText('tv-header-sub', `Antrian & ${titleTerm} - Real Time`);
+  setText('lbl-antrian', '⏳ Menunggu');
+  setText('lbl-unloading', '🔄 Sedang Unloading');
+  setText('lbl-loading', '📦 Sedang Loading');
+  setText('lbl-wait', '⏳ Menunggu Loading');
 }
  
 // ==========================================
@@ -1042,13 +1092,16 @@ function mapRow(row) {
     status: (row.status || '').toString().toLowerCase().trim(),
     unloadStartTime: row.unloadstart || null,
     unloadEndTime: row.unloadend || null,
+    preStartTime: row.preunloadstart || null,    // Unloading awal (Soetta, alur Unloading -> Loading)
+    preEndTime: row.preunloadend || null,
     origin: row['origin/destination'] || row.origin || row.origindestination,
     lokasi: (row.lokasi || 'Gedebage').toString().trim(),
     departureTime: row.departuretime || null,
     ltAntrian: row.lt_antrian_menit,
     ltProses: row.lt_proses_menit,
     ltTotal: row.lt_total_menit,
-    ltBerangkat: row.lt_keberangkatan_menit
+    ltBerangkat: row.lt_keberangkatan_menit,
+    ltPreunload: row.lt_preunload_menit
   };
 }
 
@@ -1398,88 +1451,178 @@ function updateCheckerFilter() {
 }
  
 function renderChecker() {
-  const el = document.getElementById('ck-list'); if(!el) return;
+  const el = document.getElementById('ck-list'); if (!el) return;
   let list = getFilteredFleets().filter(f => f.status && f.status.toLowerCase() !== 'done');
-  
+
   if (checkerStatusFilter !== 'all') list = list.filter(f => f.status.toLowerCase() === checkerStatusFilter);
   if (checkerSearchTerm !== '') {
     list = list.filter(f => (f.plateNumber && f.plateNumber.toLowerCase().includes(checkerSearchTerm)) || (f.driverName && f.driverName.toLowerCase().includes(checkerSearchTerm)));
   }
-  
-  if(!list.length) { el.innerHTML = '<div style="text-align:center; padding: 20px; color: var(--text2);">Kosong / Tidak ditemukan.</div>'; return; }
-  
+
+  if (!list.length) { el.innerHTML = '<div style="text-align:center; padding: 20px; color: var(--text2);">Kosong / Tidak ditemukan.</div>'; return; }
+
   el.innerHTML = list.map(f => {
-    let content = ''; const status = f.status.toLowerCase();
-    if(status === 'antrian') {
-      content = `<div class="form-group" style="margin-top:10px;"><input type="text" id="cn-${f.id}" class="form-input" value="${currentUser ? currentUser.name : ''}" readonly style="background:var(--bg); color:var(--amber);"></div>
-                 <button class="btn btn-primary" style="margin-top:5px;" onclick="startUnloading('${f.id}')">🔄 MULAI ${currentTerm.toUpperCase()}</button>`;
-    } else if(status === 'unloading') {
-      content = `<div style="font-size:13px; color:var(--amber); margin: 8px 0;">Checker Aktif: ${f.checkerName || '-'}</div>
-                 <button class="btn btn-success" onclick="finishUnloading('${f.id}')">✅ SELESAI ${currentTerm.toUpperCase()}</button>`;
+    const status = f.status.toLowerCase();
+    const soeta = isSoetta(f.lokasi);
+    const info = stageInfo(f);
+    const aktif = `<div style="font-size:13px; color:var(--amber); margin: 8px 0;">Checker Aktif: ${f.checkerName || '-'}${f.preStartTime ? ' · Alur: Unloading → Loading' : ''}</div>`;
+    let content = '';
+
+    if (status === 'antrian') {
+      let flowSel = '';
+      if (soeta) {
+        const cur = flowChoice.get(f.id) || 'loading';
+        flowSel = `<div class="form-group" style="margin-top:10px;">
+                     <label class="form-label">Alur Proses</label>
+                     <select id="fl-${f.id}" class="form-select" onchange="setFlowChoice('${f.id}', this.value)">
+                       <option value="loading" ${cur === 'loading' ? 'selected' : ''}>Loading saja</option>
+                       <option value="unload_loading" ${cur === 'unload_loading' ? 'selected' : ''}>Unloading → Loading</option>
+                     </select>
+                   </div>`;
+      }
+      content = flowSel +
+        `<div class="form-group" style="margin-top:10px;"><input type="text" id="cn-${f.id}" class="form-input" value="${currentUser ? currentUser.name : ''}" readonly style="background:var(--bg); color:var(--amber);"></div>
+         <button class="btn btn-primary" style="margin-top:5px;" onclick="startProcess('${f.id}')">🔄 MULAI ${soeta ? 'PROSES' : 'UNLOADING'}</button>`;
+    } else if (status === 'preunload') {
+      content = aktif +
+        `<button class="btn btn-primary" onclick="finishUnloadStage('${f.id}')">✅ SELESAI UNLOADING</button>`;
+    } else if (status === 'waitload') {
+      content = `<div style="font-size:13px; color:var(--yellow); margin: 8px 0;">Unloading selesai pukul ${fmtHM(f.preEndTime)} · menunggu Loading dimulai</div>
+                 <button class="btn btn-success" onclick="startLoading('${f.id}')">▶️ MULAI LOADING</button>`;
+    } else if (status === 'unloading') {
+      content = aktif +
+        `<button class="btn btn-success" onclick="finishProcess('${f.id}')">✅ SELESAI ${soeta ? 'LOADING' : 'UNLOADING'}</button>`;
     }
-    return `<div class="fleet-card"><div class="fleet-card-header"><div><div class="fleet-name">${f.plateNumber}</div><div class="fleet-meta">${f.fleetType} · Supir: ${f.driverName} · Tiba: ${fmtHM(f.arrivalTime)}</div></div><span class="status-badge s-${status}">${status}</span></div>${content}</div>`;
+
+    return `<div class="fleet-card"><div class="fleet-card-header"><div><div class="fleet-name">${f.plateNumber}</div><div class="fleet-meta">${f.fleetType} · Supir: ${f.driverName} · Tiba: ${fmtHM(f.arrivalTime)}</div></div><span class="status-badge ${info.cls}">${info.label}</span></div>${content}</div>`;
   }).join('');
 }
- 
-function startUnloading(id) {
-  const btn = document.querySelector(`button[onclick="startUnloading('${id}')"]`);
+
+// Menangani respons server yang berkode ALREADY_* (aksi sudah pernah tercatat / sudah maju tahap)
+function handleAlready(data, id, seq, cName) {
+  releasePatch(id, seq, 0);
+  toast(data.checkerName && cName && data.checkerName !== cName ? `ℹ️ Sudah dimulai oleh ${data.checkerName}` : 'ℹ️ Status sudah tercatat sebelumnya');
+  fetchDatabase(true);
+}
+
+// Mulai proses dari antrian. Soetta: sesuai alur yang dipilih checker.
+function startProcess(id) {
+  const btn = document.querySelector(`button[onclick="startProcess('${id}')"]`);
   if (btn && btn.dataset.processing === '1') return;
+  const f = fleets.find(x => x.id === id);
+  if (!f) return;
   if (btn) btn.dataset.processing = '1';
 
+  const soeta = isSoetta(f.lokasi);
+  const toPre = soeta && (flowChoice.get(id) === 'unload_loading');
   const cNameEl = document.getElementById(`cn-${id}`);
   const cName = cNameEl ? cNameEl.value.trim() : '';
-  const fields = { status: 'unloading', checkerName: cName, unloadStartTime: getLocalIso() };
-  const seq = setPatch(id, fields);
-  const f = fleets.find(x => x.id === id);
-  if (f) Object.assign(f, fields);
-  renderAll();
-  toast(`⚡ ${currentTerm} dimulai`);
+  const now = getLocalIso();
 
-  postWithRetry({ action: 'updateStatus', id: id, status: 'unloading', checkerName: cName })
+  const fields = toPre
+    ? { status: 'preunload', checkerName: cName, preStartTime: now }
+    : { status: 'unloading', checkerName: cName, unloadStartTime: now };
+  const seq = setPatch(id, fields);
+  Object.assign(f, fields);
+  renderAll();
+  toast(toPre ? '⚡ Unloading dimulai (lanjut Loading)' : `⚡ ${soeta ? 'Loading' : 'Unloading'} dimulai`);
+
+  postWithRetry({ action: 'updateStatus', id: id, status: toPre ? 'preunload' : 'unloading', checkerName: cName })
   .then(data => {
     if (data.status !== 'success') throw new Error(data.message || 'Update gagal');
-    if (String(data.code || '').startsWith('ALREADY_')) {
-      releasePatch(id, seq, 0);
-      toast(data.checkerName && data.checkerName !== cName ? `ℹ️ Sudah dimulai oleh ${data.checkerName}` : 'ℹ️ Status sudah tercatat sebelumnya');
-      fetchDatabase(true);
-      return;
-    }
-    toast(`✅ ${currentTerm} tersimpan`);
+    if (String(data.code || '').startsWith('ALREADY_')) { handleAlready(data, id, seq, cName); return; }
+    toast('✅ Tersimpan');
     releasePatch(id, seq, 6000);
   })
   .catch(err => {
-    console.error('startUnloading:', err);
+    console.error('startProcess:', err);
     releasePatch(id, seq, 0);
     toast('⚠️ ' + (err.message || 'Sinkronisasi gagal') + ' — memuat ulang data...', 'err');
     fetchDatabase(true);
   });
 }
 
-function finishUnloading(id) {
-  const btn = document.querySelector(`button[onclick="finishUnloading('${id}')"]`);
+// Soetta, alur Unloading -> Loading: Unloading selesai, Loading BELUM dimulai (jeda)
+function finishUnloadStage(id) {
+  const btn = document.querySelector(`button[onclick="finishUnloadStage('${id}')"]`);
   if (btn && btn.dataset.processing === '1') return;
+  const f = fleets.find(x => x.id === id);
+  if (!f) return;
+  if (btn) btn.dataset.processing = '1';
+
+  const fields = { status: 'waitload', preEndTime: getLocalIso() };
+  const seq = setPatch(id, fields);
+  Object.assign(f, fields);
+  renderAll();
+  toast('⚡ Unloading selesai, menunggu Loading');
+
+  postWithRetry({ action: 'updateStatus', id: id, status: 'waitload' })
+  .then(data => {
+    if (data.status !== 'success') throw new Error(data.message || 'Update gagal');
+    if (String(data.code || '').startsWith('ALREADY_')) { handleAlready(data, id, seq, ''); return; }
+    toast('✅ Unloading tersimpan');
+    releasePatch(id, seq, 6000);
+  })
+  .catch(err => {
+    console.error('finishUnloadStage:', err);
+    releasePatch(id, seq, 0);
+    toast('⚠️ ' + (err.message || 'Sinkronisasi gagal') + ' — memuat ulang data...', 'err');
+    fetchDatabase(true);
+  });
+}
+
+// Soetta: mulai Loading setelah jeda
+function startLoading(id) {
+  const btn = document.querySelector(`button[onclick="startLoading('${id}')"]`);
+  if (btn && btn.dataset.processing === '1') return;
+  const f = fleets.find(x => x.id === id);
+  if (!f) return;
+  if (btn) btn.dataset.processing = '1';
+
+  const fields = { status: 'unloading', unloadStartTime: getLocalIso() };
+  const seq = setPatch(id, fields);
+  Object.assign(f, fields);
+  renderAll();
+  toast('⚡ Loading dimulai');
+
+  postWithRetry({ action: 'updateStatus', id: id, status: 'unloading' })
+  .then(data => {
+    if (data.status !== 'success') throw new Error(data.message || 'Update gagal');
+    if (String(data.code || '').startsWith('ALREADY_')) { handleAlready(data, id, seq, ''); return; }
+    toast('✅ Loading tersimpan');
+    releasePatch(id, seq, 6000);
+  })
+  .catch(err => {
+    console.error('startLoading:', err);
+    releasePatch(id, seq, 0);
+    toast('⚠️ ' + (err.message || 'Sinkronisasi gagal') + ' — memuat ulang data...', 'err');
+    fetchDatabase(true);
+  });
+}
+
+// Selesai proses utama (Unloading di Gedebage / Loading di Soetta)
+function finishProcess(id) {
+  const btn = document.querySelector(`button[onclick="finishProcess('${id}')"]`);
+  if (btn && btn.dataset.processing === '1') return;
+  const f = fleets.find(x => x.id === id);
+  if (!f) return;
   if (btn) btn.dataset.processing = '1';
 
   const fields = { status: 'done', unloadEndTime: getLocalIso() };
   const seq = setPatch(id, fields);
-  const f = fleets.find(x => x.id === id);
-  if (f) Object.assign(f, fields);
+  Object.assign(f, fields);
   renderAll();
-  toast(`⚡ ${currentTerm} selesai`);
+  toast(`⚡ ${isSoetta(f.lokasi) ? 'Loading' : 'Unloading'} selesai`);
 
   postWithRetry({ action: 'updateStatus', id: id, status: 'done' })
   .then(data => {
     if (data.status !== 'success') throw new Error(data.message || 'Update gagal');
-    if (String(data.code || '').startsWith('ALREADY_')) {
-      releasePatch(id, seq, 0);
-      fetchDatabase(true);
-      return;
-    }
-    toast(`✅ ${currentTerm} selesai tersimpan`);
+    if (String(data.code || '').startsWith('ALREADY_')) { releasePatch(id, seq, 0); fetchDatabase(true); return; }
+    toast('✅ Selesai tersimpan');
     releasePatch(id, seq, 6000);
   })
   .catch(err => {
-    console.error('finishUnloading:', err);
+    console.error('finishProcess:', err);
     releasePatch(id, seq, 0);
     toast('⚠️ ' + (err.message || 'Sinkronisasi gagal') + ' — memuat ulang data...', 'err');
     fetchDatabase(true);
@@ -1498,83 +1641,112 @@ function getKPIStatus(elapsedTime, maxTime) {
  
 function renderTV() {
   const tbody = document.getElementById('tv-tbody'); if (!tbody) return;
-  
+
   const activeFleets = getFilteredFleets().filter(f => f.status && f.status.toLowerCase() !== 'done');
-  let violations = 0; 
-  let alarmToPlay = null; 
- 
+  let violations = 0;
+  let alarmRank = 0;   // 1 = warning, 2 = critical (antrian lewat), 3 = extreme (proses lewat)
+  const alarmNames = [null, 'warning', 'critical', 'extreme'];
+  const bump = r => { if (r > alarmRank) alarmRank = r; };
+
   const lblLokasi = document.getElementById('tbl-lokasi');
-  if(lblLokasi && currentUser) {
-     lblLokasi.textContent = currentUser.location === 'ALL' ? '(Semua Lokasi)' : `(${currentUser.location})`;
+  if (lblLokasi && currentUser) {
+    lblLokasi.textContent = currentUser.location === 'ALL' ? '(Semua Lokasi)' : `(${currentUser.location})`;
   }
- 
-  const enrichedFleets = activeFleets.map(f => {
+
+  // Kolom/kartu Loading hanya relevan di Soetta atau saat melihat semua lokasi
+  const showLoad = !!currentUser && currentUser.location !== 'Gedebage';
+  const thLoad = document.getElementById('th-kpi-load');
+  if (thLoad) thLoad.style.display = showLoad ? '' : 'none';
+  const cardLoad = document.getElementById('card-loading');
+  if (cardLoad) cardLoad.style.display = showLoad ? '' : 'none';
+  const cardWait = document.getElementById('card-wait');
+  if (cardWait) cardWait.style.display = showLoad ? '' : 'none';
+  const colCount = showLoad ? 7 : 6;
+
+  const enriched = activeFleets.map(f => {
     const status = f.status.toLowerCase();
-    
-    // --- 1. LOGIKA LIVE TIMER KEDATANGAN / ANTRIAN ---
+    const S = getStages(f);
+    const uMax = KPI_UNLOAD[f.fleetSize] || 60;
+    const lMax = KPI_LOAD[f.fleetSize] || 60;
+    const activeU = status === 'preunload' || (status === 'unloading' && !S.soeta);   // Unloading sedang berjalan
+    const activeL = status === 'unloading' && S.soeta;                                 // Loading sedang berjalan
+    const waitL = status === 'waitload';                                               // jeda: Unloading selesai, Loading belum mulai
+
+    // 1) Antrian: live selama 'antrian', terkunci saat tahap pertama dimulai
     let qDur = 0;
-    if (status === 'antrian') {
-        // Jika masih antri, pakai Waktu Live (Sekarang) - Berjalan naik terus tiap menit
-        qDur = f.arrivalTime ? elapsed(f.arrivalTime, null) : 0;
-    } else {
-        // Jika sudah diklik mulai unloading/done, waktu antrian berhenti (terkunci otomatis)
-        qDur = f.arrivalTime && f.unloadStartTime ? elapsed(f.arrivalTime, f.unloadStartTime) : 0;
-    }
+    if (status === 'antrian') qDur = f.arrivalTime ? elapsed(f.arrivalTime, null) : 0;
+    else qDur = (f.arrivalTime && S.first) ? elapsed(f.arrivalTime, S.first) : 0;
     const qStat = getKPIStatus(qDur, KPI_QUEUE);
-    
-    // --- 2. LOGIKA LIVE TIMER PROSES (UNLOADING/LOADING) ---
-    let uDur = 0; let uStat = {cls:'', txt:'-', isCrit:0};
-    if (status === 'unloading') {
-        // Jika sedang bongkar, pakai Waktu Live (Sekarang) - Berjalan naik terus
-        uDur = f.unloadStartTime ? elapsed(f.unloadStartTime, null) : 0;
-        uStat = getKPIStatus(uDur, KPI_UNLOAD[f.fleetSize] || 60);
-    } else if (status === 'done') {
-        // Jika sudah selesai, waktu berhenti
-        uDur = (f.unloadStartTime && f.unloadEndTime) ? elapsed(f.unloadStartTime, f.unloadEndTime) : 0;
-        uStat = getKPIStatus(uDur, KPI_UNLOAD[f.fleetSize] || 60);
+
+    // 2) Unloading
+    let uDur = null, uStat = null;
+    if (S.uS) { uDur = elapsed(S.uS, S.uE || null); uStat = getKPIStatus(uDur, uMax); }
+    else if (activeU) { uDur = 0; uStat = getKPIStatus(0, uMax); }
+
+    // 3) Loading (Soetta)
+    let lDur = null, lStat = null;
+    if (S.soeta) {
+      if (S.lS) { lDur = elapsed(S.lS, S.lE || null); lStat = getKPIStatus(lDur, lMax); }
+      else if (activeL) { lDur = 0; lStat = getKPIStatus(0, lMax); }
     }
-    
-    if (qStat.isCrit === 2 || uStat.isCrit === 2) violations++;
-    
-    // Penentuan Alarm
-    if (status === 'antrian') {
-        if (qStat.isCrit === 2) alarmToPlay = 'critical'; 
-        else if (qStat.isCrit === 1 && alarmToPlay !== 'critical' && alarmToPlay !== 'extreme') alarmToPlay = 'warning';
-    } else if (status === 'unloading') {
-        if (uStat.isCrit === 2) alarmToPlay = 'extreme'; 
-        else if (uStat.isCrit === 1 && alarmToPlay !== 'extreme') alarmToPlay = 'warning'; 
-    }
-    
-    return Object.assign({}, f, {
-      priorityScore: Math.max(qStat.isCrit, uStat.isCrit),
-      qDur: qDur, qStat: qStat, uDur: uDur, uStat: uStat
-    });
+
+    // 4) Jeda sebelum Loading (tanpa KPI)
+    const gapDur = (waitL && S.uE) ? elapsed(S.uE, null) : 0;
+
+    const crit = Math.max(qStat.isCrit, uStat ? uStat.isCrit : 0, lStat ? lStat.isCrit : 0);
+    if (qStat.isCrit === 2 || (uStat && uStat.isCrit === 2) || (lStat && lStat.isCrit === 2)) violations++;
+
+    // Alarm hanya untuk tahap yang sedang berjalan
+    if (status === 'antrian') { if (qStat.isCrit === 2) bump(2); else if (qStat.isCrit === 1) bump(1); }
+    if (activeU && uStat) { if (uStat.isCrit === 2) bump(3); else if (uStat.isCrit === 1) bump(1); }
+    if (activeL && lStat) { if (lStat.isCrit === 2) bump(3); else if (lStat.isCrit === 1) bump(1); }
+
+    return Object.assign({}, f, { priorityScore: crit, qDur, qStat, uDur, uStat, lDur, lStat, uMax, lMax, S, activeU, activeL, waitL, gapDur });
   });
- 
+
+  const alarmToPlay = alarmNames[alarmRank];
   if (alarmToPlay) playAlarm(alarmToPlay);
- 
- enrichedFleets.sort((a, b) => b.priorityScore - a.priorityScore);
-  
- if(document.getElementById('kc-total')) document.getElementById('kc-total').textContent = enrichedFleets.length;
- if(document.getElementById('kc-antrian')) document.getElementById('kc-antrian').textContent = enrichedFleets.filter(f=>f.status==='antrian').length;
- if(document.getElementById('kc-unloading')) document.getElementById('kc-unloading').textContent = enrichedFleets.filter(f=>f.status==='unloading').length;
- if(document.getElementById('kc-violations')) document.getElementById('kc-violations').textContent = violations;
- if(document.getElementById('ind-lewat-kpi')) document.getElementById('ind-lewat-kpi').textContent = violations;
- 
-  if (!enrichedFleets.length) { tbody.innerHTML = `<tr><td colspan="6"><div style="text-align:center; padding: 20px;">Operasional Clear.</div></td></tr>`; return; }
-  
-  tbody.innerHTML = enrichedFleets.map((f, i) => {
+
+  enriched.sort((a, b) => b.priorityScore - a.priorityScore);
+
+  const setTxt = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+  setTxt('kc-total', enriched.length);
+  setTxt('kc-antrian', enriched.filter(f => f.status === 'antrian').length);
+  setTxt('kc-unloading', enriched.filter(f => f.activeU).length);
+  setTxt('kc-wait', enriched.filter(f => f.waitL).length);
+  setTxt('kc-loading', enriched.filter(f => f.activeL).length);
+  setTxt('kc-violations', violations);
+  setTxt('ind-lewat-kpi', violations);
+
+  if (!enriched.length) { tbody.innerHTML = `<tr><td colspan="${colCount}"><div style="text-align:center; padding: 20px;">Operasional Clear.</div></td></tr>`; return; }
+
+  // Sel KPI satu tahap: live (berwarna & berkedip bila lewat) atau selesai (statis)
+  const kpiCell = (dur, max, stat, live, emptyTxt) => {
+    if (dur === null) return `<td class="kpi-cell">${emptyTxt}</td>`;
+    if (live) return `<td class="kpi-cell ${stat.cls}">${dur}m / ${max}m<br><small>${stat.txt}</small></td>`;
+    const cls = stat.isCrit === 2 ? 'c-red-static' : 'c-green';
+    return `<td class="kpi-cell ${cls}">${dur}m / ${max}m<br><small>Selesai · ${stat.isCrit === 2 ? stat.txt : 'sesuai KPI'}</small></td>`;
+  };
+
+  tbody.innerHTML = enriched.map((f, i) => {
     const status = f.status.toLowerCase();
-    const uMax = status ==='unloading' ? (KPI_UNLOAD[f.fleetSize] || '-') : '-';
+    const info = stageInfo(f);
     const locBadge = currentUser && currentUser.location === 'ALL' ? `<br><span style="color:var(--blue); font-size:10px;">${f.lokasi}</span>` : '';
-    
+    const flowTag = (f.S.soeta && (f.preStartTime || status === 'preunload' || status === 'waitload')) ? ' · U→L' : '';
+    const uEmpty = status === 'antrian' ? 'Menunggu' : '-';
+    const lEmpty = (f.S.soeta && (status === 'antrian' || status === 'preunload')) ? 'Menunggu' : '-';
+    const loadCell = f.waitL
+      ? `<td class="kpi-cell c-yellow">⏳ Jeda ${f.gapDur}m<br><small>menunggu Loading</small></td>`
+      : kpiCell(f.lDur, f.lMax, f.lStat, f.activeL, lEmpty);
+
     return `<tr>
-     <td>${i+1}</td>
+     <td>${i + 1}</td>
       <td>Drv: <b>${f.driverName}</b><br>Chk: <b>${f.checkerName || '-'}</b></td>
-     <td><b>${f.plateNumber}</b><br><small>${f.fleetType}</small>${locBadge}</td>
-     <td><span class="status-badge s-${status}">${status}</span></td>
-      <td class="kpi-cell ${f.qStat.cls}">${f.qDur}m / 180m<br><small>${f.qStat.txt}</small></td>
-      <td class="kpi-cell ${f.uStat.cls}">${status==='unloading' ? `${f.uDur}m / ${uMax}m<br><small>${f.uStat.txt}</small>` : 'Menunggu'}</td>
+     <td><b>${f.plateNumber}</b><br><small>${f.fleetType}${flowTag}</small>${locBadge}</td>
+     <td><span class="status-badge ${info.cls}">${info.label}</span></td>
+      <td class="kpi-cell ${f.qStat.cls}">${f.qDur}m / ${KPI_QUEUE}m<br><small>${f.qStat.txt}</small></td>
+      ${kpiCell(f.uDur, f.uMax, f.uStat, f.activeU, uEmpty)}
+      ${showLoad ? loadCell : ''}
     </tr>`;
   }).join('');
 }
@@ -1635,6 +1807,7 @@ function populateFilters() {
 }
  
 function resetAnalitikFilters() {
+  overKpiFilter = 'all';
   const d = defaultAnalitikDates();
   document.getElementById('filter-start').value = d.from;
   document.getElementById('filter-end').value = d.to;
@@ -1653,24 +1826,44 @@ function numOrNull(v) {
   return isNaN(n) ? null : n;
 }
 
-// Lead time dalam menit. Nilai dari kolom spreadsheet diprioritaskan; jika kosong dihitung dari jam.
+// Lead time (menit) per tahap. Nilai kolom spreadsheet diprioritaskan; bila kosong dihitung dari jam.
+// q = antrian, u = Unloading, l = Loading (Soetta), t = total, d = tunggu berangkat, p = total proses (u + l)
 function getLead(r) {
-  const q = (r.arrivalTime && r.unloadStartTime) ? elapsed(r.arrivalTime, r.unloadStartTime) : null;
-  const u = (r.unloadStartTime && r.unloadEndTime) ? elapsed(r.unloadStartTime, r.unloadEndTime) : null;
-  const t = (r.arrivalTime && r.unloadEndTime) ? elapsed(r.arrivalTime, r.unloadEndTime) : null;
-  const d = (r.unloadEndTime && r.departureTime) ? elapsed(r.unloadEndTime, r.departureTime) : null;
-  const sq = numOrNull(r.ltAntrian), su = numOrNull(r.ltProses), st = numOrNull(r.ltTotal), sd = numOrNull(r.ltBerangkat);
+  const S = getStages(r);
+  const q = (r.arrivalTime && S.first) ? elapsed(r.arrivalTime, S.first) : null;
+  const u = (S.uS && S.uE) ? elapsed(S.uS, S.uE) : null;
+  const l = (S.lS && S.lE) ? elapsed(S.lS, S.lE) : null;
+  const end = S.soeta ? S.lE : S.uE;                       // akhir seluruh proses
+  const t = (r.arrivalTime && end) ? elapsed(r.arrivalTime, end) : null;
+  const d = (end && r.departureTime) ? elapsed(end, r.departureTime) : null;
+    const j = (S.soeta && S.uE && S.lS) ? elapsed(S.uE, S.lS) : null;   // jeda Unloading -> Loading
+  const sq = numOrNull(r.ltAntrian), sm = numOrNull(r.ltProses), st = numOrNull(r.ltTotal),
+        sd = numOrNull(r.ltBerangkat), sp = numOrNull(r.ltPreunload);
+  const U = S.soeta ? (sp !== null ? sp : u) : (sm !== null ? sm : u);
+  const Lg = S.soeta ? (sm !== null ? sm : l) : null;
   return {
     q: sq !== null ? sq : q,
-    u: su !== null ? su : u,
+    u: U,
+    l: Lg,
     t: st !== null ? st : t,
-    d: sd !== null ? sd : d
+    d: sd !== null ? sd : d,
+    j: j,
+    p: (U !== null || Lg !== null) ? (U || 0) + (Lg || 0) : null
+  };
+}
+
+// Proses mana yang melewati KPI
+function kpiBreach(r, L) {
+  return {
+    q: L.q !== null && L.q > KPI_QUEUE,
+    u: L.u !== null && L.u > (KPI_UNLOAD[r.fleetSize] || 60),
+    l: L.l !== null && L.l > (KPI_LOAD[r.fleetSize] || 60)
   };
 }
 
 function isKpiFail(r, L) {
-  return (L.q !== null && L.q > KPI_QUEUE) ||
-         (L.u !== null && L.u > (KPI_UNLOAD[r.fleetSize] || 60));
+  const b = kpiBreach(r, L);
+  return b.q || b.u || b.l;
 }
 
 function processAnalitik() {
@@ -1689,7 +1882,8 @@ function processAnalitik() {
   const checker = val('filter-checker-analitik', 'all');
   const lokasi = val('filter-lokasi-analitik', 'all');
 
-  currentFilteredData = currentData.filter(row => {
+  // Filter dropdown (dipakai juga oleh pie)
+  const base = currentData.filter(row => {
     if (origin !== 'all' && row.origin !== origin) return false;
     if (type !== 'all' && row.fleetType !== type) return false;
     if (size !== 'all' && row.fleetSize !== size) return false;
@@ -1698,8 +1892,14 @@ function processAnalitik() {
     return true;
   });
 
+  // Filter irisan pie (Antrian / Unloading / Loading overdue) untuk visual lain
+  currentFilteredData = overKpiFilter === 'all'
+    ? base
+    : base.filter(r => kpiBreach(r, getLead(r))[overKpiFilter]);
+
   generateAI(currentFilteredData);
   updateAnalitikCharts(currentFilteredData);
+  updateOverKpiPie(base);   // dipanggil SETELAH updateAnalitikCharts (warna teks Chart.js diatur di sana)
 }
 
 function generateAI(data) {
@@ -1712,29 +1912,35 @@ function generateAI(data) {
 
   const total = data.length;
   let selesai = 0, proses = 0, antri = 0, dinilai = 0, fail = 0;
-  let sumQ = 0, nQ = 0, sumU = 0, nU = 0, sumT = 0, nT = 0, sumD = 0, nD = 0;
+  let sumQ = 0, nQ = 0, sumU = 0, nU = 0, sumL = 0, nL = 0, sumT = 0, nT = 0, sumD = 0, nD = 0;
+  const bc = { q: 0, u: 0, l: 0 };
   const checkerStats = {};
 
   data.forEach(r => {
     const st = (r.status || '').toLowerCase();
-    if (st === 'done') selesai++; else if (st === 'unloading') proses++; else antri++;
+    if (st === 'done') selesai++; else if (st === 'unloading' || st === 'preunload') proses++; else antri++;
 
     const L = getLead(r);
     if (L.q !== null) { sumQ += L.q; nQ++; }
     if (L.u !== null) { sumU += L.u; nU++; }
+    if (L.l !== null) { sumL += L.l; nL++; }
     if (L.t !== null) { sumT += L.t; nT++; }
     if (L.d !== null) { sumD += L.d; nD++; }
 
-    // SLA hanya dinilai untuk armada yang sudah dimulai (punya jam mulai)
-    if (L.q !== null || L.u !== null) {
+    // SLA hanya dinilai untuk armada yang sudah punya durasi tahap
+    if (L.q !== null || L.u !== null || L.l !== null) {
       dinilai++;
-      if (isKpiFail(r, L)) fail++;
+      const b = kpiBreach(r, L);
+      if (b.q || b.u || b.l) fail++;
+      if (b.q) bc.q++;
+      if (b.u) bc.u++;
+      if (b.l) bc.l++;
     }
 
-    if (r.checkerName && L.u !== null) {
+    if (r.checkerName && L.p !== null) {
       if (!checkerStats[r.checkerName]) checkerStats[r.checkerName] = { count: 0, time: 0 };
       checkerStats[r.checkerName].count++;
-      checkerStats[r.checkerName].time += L.u;
+      checkerStats[r.checkerName].time += L.p;
     }
   });
 
@@ -1755,12 +1961,20 @@ function generateAI(data) {
     reco = `<b style="color: var(--yellow);">🟡 Rata-rata Waktu Antri Tinggi (${avgQueue}m).</b><br>Rekomendasi: Percepat administrasi dari tim Security ke Checker.`;
   }
 
+  let topSrc = '';
+  if (fail > 0) {
+    const names = { q: 'Antrian', u: 'Unloading', l: 'Loading' };
+    const k = Object.keys(bc).sort((a, b) => bc[b] - bc[a])[0];
+    topSrc = `• Sumber pelanggaran terbanyak: <b>${names[k]} Overdue</b> (${bc[k]} kasus) — antrian ${bc.q} · unloading ${bc.u} · loading ${bc.l}<br>`;
+  }
+
   let html = `
-    <b>📊 Kesimpulan Matematis (${currentTerm}):</b><br>
+    <b>📊 Kesimpulan Matematis:</b><br>
     • Total Volume (sesuai filter): <b>${total} armada</b> — ${selesai} selesai · ${proses} sedang proses · ${antri} masih antri<br>
     • Total baris tersedia untuk akun Anda: <b>${getAnalitikFleets().length}</b> (samakan dengan jumlah baris spreadsheet pada lokasi yang sama)<br>
-    • Rasio Pelanggaran SLA: <b>${violationRate}%</b> (${fail} dari ${dinilai} armada yang sudah dimulai)<br>
-    • Rata-rata lead time: antrian <b>${avg(sumQ, nQ)} mnt</b> · proses <b>${avg(sumU, nU)} mnt</b> · total <b>${avg(sumT, nT)} mnt</b>${nD ? ` · tunggu berangkat <b>${avg(sumD, nD)} mnt</b>` : ''}<br>
+    • Rasio Pelanggaran SLA: <b>${violationRate}%</b> (${fail} dari ${dinilai} armada yang sudah dinilai)<br>
+    ${topSrc}
+    • Rata-rata lead time: antrian <b>${avg(sumQ, nQ)} mnt</b> · unloading <b>${avg(sumU, nU)} mnt</b>${nL ? ` · loading <b>${avg(sumL, nL)} mnt</b>` : ''} · total <b>${avg(sumT, nT)} mnt</b>${nD ? ` · tunggu berangkat <b>${avg(sumD, nD)} mnt</b>` : ''}<br>
   `;
   if (worstChecker) html += `• Evaluasi Personil: Waktu proses terlama tercatat pada <b>${worstChecker}</b> dengan rata-rata <b>${Math.round(maxAvgTime)} menit/armada</b>.<br>`;
   html += `<br>${reco}`;
@@ -1780,17 +1994,17 @@ function updateAnalitikCharts(data) {
   const checkerStats = {};
   const typeCounts = {};
 
-  data.forEach(r => {
+    data.forEach(r => {
     const L = getLead(r);
 
-    if (L.q !== null || L.u !== null) {
+    if (L.q !== null || L.u !== null || L.l !== null) {
       if (isKpiFail(r, L)) kpiFail++; else kpiOk++;
     }
     if (r.origin) originCounts[r.origin] = (originCounts[r.origin] || 0) + 1;
     if (r.fleetType) typeCounts[r.fleetType] = (typeCounts[r.fleetType] || 0) + 1;
-    if (r.checkerName && L.u !== null) {
+    if (r.checkerName && L.p !== null) {
       if (!checkerStats[r.checkerName]) checkerStats[r.checkerName] = { sum: 0, count: 0 };
-      checkerStats[r.checkerName].sum += L.u;
+      checkerStats[r.checkerName].sum += L.p;
       checkerStats[r.checkerName].count++;
     }
   });
@@ -1924,6 +2138,126 @@ function updateAnalitikCharts(data) {
   }
 }
 
+// ---------- PIE CHART: SUMBER OVER-KPI ----------
+let chartOverKpi = null;
+let overKpiFilter = 'all';    // 'all' | 'q' | 'u' | 'l'
+const OVERKPI_META = [
+  { key: 'q', label: 'Antrian Overdue',   color: '#38bdf8' },
+  { key: 'u', label: 'Unloading Overdue', color: '#f59e0b' },
+  { key: 'l', label: 'Loading Overdue',   color: '#a855f7' }
+];
+
+function clearOverKpiFilter() { overKpiFilter = 'all'; processAnalitik(); }
+
+function updateOverKpiPie(data) {
+  const cv = document.getElementById('chartOverKpi');
+  if (!cv) return;
+  const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+  const textColor = isDark ? '#e2eaf5' : '#4b5563';
+  const sizes = ['small', 'medium', 'large'];
+  const cnt = { q: 0, u: 0, l: 0 };
+  const bySize = { u: { small: 0, medium: 0, large: 0 }, l: { small: 0, medium: 0, large: 0 } };
+  let dinilai = 0, over = 0;
+
+  data.forEach(r => {
+    const L = getLead(r);
+    if (L.q === null && L.u === null && L.l === null) return;   // belum ada tahap yang bisa dinilai
+    dinilai++;
+    const b = kpiBreach(r, L);
+    if (b.q || b.u || b.l) over++;
+    const sz = sizes.includes(r.fleetSize) ? r.fleetSize : getSize(r.fleetType);
+    if (b.q) cnt.q++;
+    if (b.u) { cnt.u++; bySize.u[sz]++; }
+    if (b.l) { cnt.l++; bySize.l[sz]++; }
+  });
+
+  const total = cnt.q + cnt.u + cnt.l;
+  if (chartOverKpi) { chartOverKpi.destroy(); chartOverKpi = null; }
+
+  const empty = document.getElementById('overkpi-empty');
+  const sum = document.getElementById('overkpi-summary');
+
+  let html = `<b>${over}</b> dari <b>${dinilai}</b> armada terukur Over-KPI (${dinilai ? Math.round(over / dinilai * 100) : 0}%).`;
+  if (total) {
+    html += ` Satu armada bisa melanggar lebih dari satu proses, jadi total irisan (${total}) bisa lebih besar dari jumlah armada.`;
+    html += `<br>Unloading: Small ${bySize.u.small} · Medium ${bySize.u.medium} · Large ${bySize.u.large}`;
+    html += `<br>Loading: Small ${bySize.l.small} · Medium ${bySize.l.medium} · Large ${bySize.l.large}`;
+  }
+  if (overKpiFilter !== 'all') {
+    const m = OVERKPI_META.find(x => x.key === overKpiFilter);
+    html += `<br>🔎 Filter aktif: <b>${m.label}</b> — <a href="#" onclick="clearOverKpiFilter(); return false;" style="color:var(--blue);">hapus filter</a>`;
+  }
+  if (sum) sum.innerHTML = html;
+
+  if (total === 0) {
+    cv.style.display = 'none';
+    if (empty) empty.style.display = 'flex';
+    return;
+  }
+  cv.style.display = '';
+  if (empty) empty.style.display = 'none';
+
+  chartOverKpi = new Chart(cv, {
+    type: 'pie',
+    data: {
+      labels: OVERKPI_META.map(m => m.label),
+      datasets: [{
+        data: [cnt.q, cnt.u, cnt.l],
+        backgroundColor: OVERKPI_META.map(m => m.color),
+        borderColor: isDark ? '#0d1b2e' : '#ffffff',
+        borderWidth: 2,
+        offset: OVERKPI_META.map(m => overKpiFilter === m.key ? 16 : 0)   // irisan terpilih menonjol
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'bottom', labels: { color: textColor } },
+        tooltip: {
+          callbacks: {
+            label: c => {
+              const m = OVERKPI_META[c.dataIndex];
+              const v = c.parsed;
+              const lines = [`${m.label}: ${v} armada (${Math.round(v / total * 100)}%)`];
+              if (m.key !== 'q') { const s = bySize[m.key]; lines.push(`Small ${s.small} · Medium ${s.medium} · Large ${s.large}`); }
+              return lines;
+            }
+          }
+        }
+      },
+      onHover: (event, el) => { event.native.target.style.cursor = el[0] ? 'pointer' : 'default'; },
+      onClick: (event, elements) => {
+        if (!elements.length) return;
+        const key = OVERKPI_META[elements[0].index].key;
+        overKpiFilter = (overKpiFilter === key) ? 'all' : key;   // klik lagi untuk membatalkan
+        toast(overKpiFilter === 'all' ? '🔍 Filter Over-KPI dihapus' : `🔍 Filter diterapkan: ${OVERKPI_META[elements[0].index].label}`);
+        processAnalitik();
+      }
+    },
+    plugins: [{
+      id: 'overKpiLabels',
+      afterDatasetsDraw(chart) {
+        const c = chart.ctx;
+        const vals = chart.data.datasets[0].data;
+        c.save();
+        c.fillStyle = '#ffffff';
+        c.font = 'bold 12px Nunito, sans-serif';
+        c.textAlign = 'center';
+        c.textBaseline = 'middle';
+        chart.getDatasetMeta(0).data.forEach((arc, i) => {
+          const v = vals[i];
+          const pct = Math.round(v / total * 100);
+          if (!v || pct < 6) return;
+          const p = arc.tooltipPosition();
+          c.fillText(`${v} (${pct}%)`, p.x, p.y);
+        });
+        c.restore();
+      }
+    }]
+  });
+}
+
 function downloadFilteredData() {
   if (!currentFilteredData || currentFilteredData.length === 0) {
     toast("Tidak ada data untuk diekspor pada filter ini.", "err");
@@ -1942,18 +2276,30 @@ function downloadFilteredData() {
     { h: 'arrivaltime',            g: r => r.arrivalTime, t: 1 },
     { h: 'checkername',            g: r => r.checkerName },
     { h: 'status',                 g: r => r.status },
+    { h: 'preunloadstart',         g: r => r.preStartTime, t: 1 },
+    { h: 'preunloadend',           g: r => r.preEndTime, t: 1 },
     { h: 'unloadstart',            g: r => r.unloadStartTime, t: 1 },
     { h: 'unloadend',              g: r => r.unloadEndTime, t: 1 },
     { h: 'lokasi',                 g: r => r.lokasi },
     { h: 'departuretime',          g: r => r.departureTime, t: 1 },
     { h: 'lt_antrian_menit',       g: r => getLead(r).q },
-    { h: 'lt_proses_menit',        g: r => getLead(r).u },
+    { h: 'lt_unloading_menit',     g: r => getLead(r).u },
+    { h: 'lt_loading_menit',       g: r => getLead(r).l },
+    { h: 'lt_jeda_unloading_loading_menit', g: r => getLead(r).j },
     { h: 'lt_total_menit',         g: r => getLead(r).t },
     { h: 'lt_keberangkatan_menit', g: r => getLead(r).d },
     { h: 'status_kpi',             g: r => {
         const L = getLead(r);
         if (isKpiFail(r, L)) return 'Lewat KPI';
         return (r.status === 'done') ? 'Sesuai' : 'Belum selesai';
+    } },
+    { h: 'sumber_over_kpi',        g: r => {
+        const b = kpiBreach(r, getLead(r));
+        const a = [];
+        if (b.q) a.push('Antrian');
+        if (b.u) a.push('Unloading');
+        if (b.l) a.push('Loading');
+        return a.join(', ');
     } }
   ];
 
