@@ -241,6 +241,13 @@
     <li><a href="#" onclick="setView('ai'); closeSidebar();" class="text-glow"><i class="fa-solid fa-robot"></i> Fitur AI <span class="badge-new">NEW</span></a></li>
   </ul>
  
+  <div id="menu-users" style="display:none;">
+    <div class="sidebar-section">ADMINISTRATOR</div>
+    <ul class="sidebar-menu">
+      <li><a href="#" onclick="setView('users'); closeSidebar();"><i class="fa-solid fa-users-gear"></i> Kelola User</a></li>
+    </ul>
+  </div>
+ 
   <div class="sidebar-section">PENGEMBANGAN</div>
   <ul class="sidebar-menu">
     <li class="has-submenu">
@@ -543,6 +550,51 @@
   </div>
 </div>
  
+<div id="view-users" class="view">
+  <div class="mobile-container">
+    <div class="view-header">
+      <button class="hamburger-inline" onclick="openSidebar()"><i class="fa-solid fa-bars"></i></button>
+      <div class="section-title">👥 Kelola User</div>
+    </div>
+    <div style="font-size:13px; color:var(--text2); margin-bottom:14px;">Khusus Super User. Password tersimpan terenkripsi (tidak bisa dilihat), hanya bisa direset.</div>
+    <button class="btn btn-primary" onclick="openUserForm(-1)">➕ Tambah User</button>
+    <div class="filter-box" style="margin-top:12px;">
+      <select class="form-select" id="usr-role" onchange="renderUsers()">
+        <option value="all">Semua Role</option><option value="admin">Admin</option><option value="spv">SPV</option>
+        <option value="security">Security</option><option value="checker">Checker</option>
+      </select>
+    </div>
+    <div class="form-group" style="margin-top:10px;">
+      <input type="text" class="form-input" id="usr-search" placeholder="🔍 Cari nama / username..." oninput="renderUsers()" />
+    </div>
+    <div id="usr-count" style="font-size:12px; color:var(--text2); margin-bottom:10px;"></div>
+    <div id="usr-list"></div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modalUser">
+  <div class="modal-box">
+    <span class="modal-close" onclick="closeModal('modalUser')">✖</span>
+    <div class="modal-title" id="usr-title">Tambah User</div>
+    <div class="modal-body">
+      <input type="hidden" id="usr-mode" value="add" />
+      <div class="form-group"><label class="form-label">Username (NIK)</label><input type="text" class="form-input" id="usr-username" autocomplete="off" /></div>
+      <div class="form-group"><label class="form-label">Nama</label><input type="text" class="form-input" id="usr-name" autocomplete="off" /></div>
+      <div class="form-group"><label class="form-label">Role</label>
+        <select class="form-select" id="usr-frole"><option value="checker">Checker</option><option value="security">Security</option><option value="spv">SPV</option><option value="admin">Admin</option></select></div>
+      <div class="form-group"><label class="form-label">Lokasi</label>
+        <select class="form-select" id="usr-floc"><option value="Gedebage">Gedebage</option><option value="Soekarno Hatta 452">Soekarno Hatta 452</option><option value="ALL">ALL</option></select></div>
+      <div class="form-group"><label class="form-label">Status</label>
+        <select class="form-select" id="usr-active"><option value="1">Aktif</option><option value="0">Nonaktif (tidak bisa login)</option></select></div>
+      <div class="form-group"><label class="form-label" id="usr-passlabel">Password</label>
+        <input type="text" class="form-input" id="usr-pass" autocomplete="off" />
+        <button type="button" class="btn btn-outline" style="margin-top:6px; padding:8px;" onclick="genPass()">🎲 Buat password acak</button></div>
+      <button class="btn btn-primary" id="usr-save" onclick="saveUserForm()">💾 Simpan</button>
+      <button class="btn" id="usr-del" style="margin-top:8px; background:var(--red); color:#fff; display:none;" onclick="deleteUserForm()">🗑️ Hapus User</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
  
 <div class="modal-overlay" id="modalAbout">
@@ -619,6 +671,7 @@
 // 1. INISIALISASI VARIABEL
 // ==========================================
 let currentUser = null;
+let sessionToken = localStorage.getItem('nadi_token') || '';   // token sesi dari server
 let currentTerm = 'Unloading'; // Default Terminologi
  
 const API_URL = 'https://script.google.com/macros/s/AKfycbxDdtdla2-hoRDz66czD4TfbYGdaqpw2vi7jecJPaUisfRwUUgf1qGhIol6_VVUlXxT/exec'; // <-- PASTE LINK PUBLISH APPS SCRIPT DI SINI!
@@ -766,6 +819,8 @@ async function handleLogin() {
       
       // SIMPAN SESI LOGIN (KEEP ME LOGGED IN)
       localStorage.setItem('nadi_user_session', JSON.stringify(user));
+      sessionToken = res.token || '';
+      localStorage.setItem('nadi_token', sessionToken);
       
       document.getElementById('sidebar').style.display = 'flex';
       document.getElementById('user-location-badge').textContent = user.location;
@@ -780,6 +835,7 @@ async function handleLogin() {
       document.getElementById('menu-checker').style.display = ['admin', 'spv', 'checker'].includes(user.role) ? 'block' : 'none';
       document.getElementById('menu-tv').style.display = 'block';
       document.getElementById('menu-armada').style.display = 'block';
+      applyUserMenu();
       
       // Auto-fill names untuk Security
       if (user.role === 'security' || user.role === 'checker') document.getElementById('f-secname').value = user.name;
@@ -792,7 +848,7 @@ async function handleLogin() {
       
       fetchDatabase(); 
     } else {
-      toast('❌ Username atau Password Salah!', 'err');
+      toast('❌ ' + ((res.message || '').indexOf('Terlalu') === 0 ? res.message : 'Username atau Password Salah!'), 'err');
     }
   } catch(e) {
     toast('❌ Gagal terhubung ke Server Apps Script', 'err');
@@ -826,6 +882,7 @@ function setupOriginDestination(location) {
 function logout() {
   // HAPUS SESI LOGIN
   localStorage.removeItem('nadi_user_session');
+  localStorage.removeItem('nadi_token'); sessionToken = '';
   
   currentUser = null;
   fleets = []; lastDbVersion = '';
@@ -929,6 +986,7 @@ function setView(v) {
     document.getElementById(`view-${v}`).classList.add('active'); 
   }
         if(v === 'armada') { prepareAnalitikView(); }
+  if (v === 'users') loadUsers();
   renderAll(); 
 }
  
@@ -1104,6 +1162,17 @@ function mapRow(row) {
   };
 }
 
+// Satu ID = satu kartu (pengaman di sisi tampilan; server sudah menyaring juga)
+function dedupeFleets(list) {
+  const rank = s => s === 'done' ? 3 : (s === 'antrian' || !s) ? 1 : 2;
+  const byId = new Map();
+  list.forEach((f, n) => {
+    const k = f.id || ('x' + n), b = byId.get(k);
+    if (!b || rank(f.status) >= rank(b.status)) byId.set(k, f);
+  });
+  return Array.from(byId.values());
+}
+
 // Sinkronisasi data LIVE: 1 request. Server membalas 'not_modified' bila tidak ada perubahan.
 async function fetchDatabase(force = false) {
   if (!currentUser) return false;
@@ -1128,7 +1197,7 @@ async function fetchDatabase(force = false) {
       if (j.status === 'not_modified') {
         ok = true;
       } else if (j.status === 'ok' && Array.isArray(j.data)) {
-        fleets = mergePending(j.data.map(mapRow));
+        fleets = dedupeFleets(mergePending(j.data.map(mapRow)));
         lastDbVersion = j.version || '';
         renderAll();
         ok = true;
@@ -1263,7 +1332,7 @@ async function postAPI(payload, timeoutMs = 20000) {
     const res = await fetch(API_URL, {
       method: 'POST', keepalive: true, cache: 'no-store',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify(payload), signal: ctrl.signal
+      body: JSON.stringify(Object.assign({ token: sessionToken }, payload)), signal: ctrl.signal
     });
     if (!res.ok) throw new Error('HTTP ' + res.status);
     const data = await res.json();
@@ -2489,6 +2558,98 @@ function sendAIChat() {
 }
 
 // ==========================================
+// KELOLA USER (khusus super user)
+// ==========================================
+let usersCache = [];
+const escH = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+function applyUserMenu() {
+  const m = document.getElementById('menu-users');
+  if (m) m.style.display = (currentUser && currentUser.isSuper) ? 'block' : 'none';
+}
+
+async function userApi(payload) {
+  const d = await postAPI(payload);
+  if (d.code === 'UNAUTHORIZED') { toast('🔒 Sesi berakhir. Silakan login ulang.', 'err'); logout(); throw new Error('UNAUTHORIZED'); }
+  return d;
+}
+
+async function loadUsers() {
+  if (!currentUser || !currentUser.isSuper) return;
+  const box = document.getElementById('usr-list');
+  box.innerHTML = '<div style="text-align:center; padding:20px; color:var(--text2);">Memuat daftar user...</div>';
+  try {
+    const d = await userApi({ action: 'listUsers' });
+    if (d.status !== 'ok') throw new Error(d.message || 'Gagal');
+    usersCache = d.users || []; renderUsers();
+  } catch (e) {
+    if (e.message !== 'UNAUTHORIZED') box.innerHTML = '<div style="text-align:center; padding:20px; color:var(--red);">Gagal memuat: ' + escH(e.message) + '</div>';
+  }
+}
+
+function renderUsers() {
+  const q = document.getElementById('usr-search').value.toLowerCase().trim();
+  const role = document.getElementById('usr-role').value, MAX = 60;
+  const rows = usersCache.map((u, i) => ({ u, i }))
+    .filter(x => (role === 'all' || x.u.role === role) && (!q || (x.u.username + ' ' + x.u.name).toLowerCase().includes(q)));
+  document.getElementById('usr-count').textContent = rows.length + ' dari ' + usersCache.length + ' user' + (rows.length > MAX ? ' · tampil ' + MAX + ' pertama, gunakan pencarian' : '');
+  document.getElementById('usr-list').innerHTML = rows.slice(0, MAX).map(({ u, i }) =>
+    `<div class="fleet-card" style="${u.active ? '' : 'opacity:.55;'}">
+       <div class="fleet-card-header"><div><div class="fleet-name">${escH(u.name)}${u.isSuper ? ' ⭐' : ''}</div>
+       <div class="fleet-meta">${escH(u.username)} · ${escH(u.location)}${u.active ? '' : ' · NONAKTIF'}</div></div>
+       <span class="status-badge s-antrian">${escH(u.role)}</span></div>
+       <button class="btn btn-outline" onclick="openUserForm(${i})">✏️ Edit / Reset Password</button>
+     </div>`).join('') || '<div style="text-align:center; padding:20px; color:var(--text2);">Tidak ada user.</div>';
+}
+
+function openUserForm(i) {
+  const u = i >= 0 ? usersCache[i] : null, $ = id => document.getElementById(id);
+  $('usr-mode').value = u ? 'edit' : 'add';
+  $('usr-title').textContent = u ? 'Edit User' : 'Tambah User';
+  $('usr-username').value = u ? u.username : ''; $('usr-username').readOnly = !!u;
+  $('usr-name').value = u ? u.name : '';
+  $('usr-frole').value = u ? u.role : 'checker';
+  $('usr-floc').value = u ? u.location : 'Gedebage';
+  $('usr-active').value = (!u || u.active) ? '1' : '0';
+  $('usr-pass').value = '';
+  $('usr-passlabel').textContent = u ? 'Password baru (kosongkan bila tidak diganti)' : 'Password';
+  $('usr-del').style.display = (u && !u.isSuper) ? 'block' : 'none';
+  openModal('modalUser');
+}
+
+function genPass() {
+  const c = 'abcdefghjkmnpqrstuvwxyz23456789', a = new Uint32Array(8);
+  crypto.getRandomValues(a);
+  document.getElementById('usr-pass').value = Array.from(a, n => c[n % c.length]).join('');
+}
+
+async function saveUserForm() {
+  const $ = id => document.getElementById(id), btn = $('usr-save');
+  if (btn.dataset.busy === '1') return;
+  const p = { action: 'saveUser', mode: $('usr-mode').value, username: $('usr-username').value.trim(), name: $('usr-name').value.trim(),
+              role: $('usr-frole').value, location: $('usr-floc').value, active: $('usr-active').value === '1', pass: $('usr-pass').value };
+  if (!p.username || !p.name) { toast('❌ Username dan Nama wajib diisi', 'err'); return; }
+  if (p.mode === 'add' && p.pass.length < 4) { toast('❌ Password minimal 4 karakter', 'err'); return; }
+  btn.dataset.busy = '1'; btn.textContent = 'Menyimpan...';
+  try {
+    const d = await userApi(p);
+    if (d.status === 'ok') { toast('✅ ' + d.message); closeModal('modalUser'); loadUsers(); }
+    else toast('❌ ' + (d.message || 'Gagal menyimpan'), 'err');
+  } catch (e) { if (e.message !== 'UNAUTHORIZED') toast('⚠️ Koneksi bermasalah, coba lagi', 'err'); }
+  finally { btn.dataset.busy = '0'; btn.textContent = '💾 Simpan'; }
+}
+
+async function deleteUserForm() {
+  const name = document.getElementById('usr-username').value.trim();
+  if (!confirm('Hapus user ' + name + ' secara permanen?\nTips: pilih status Nonaktif bila hanya ingin mencabut akses.')) return;
+  try {
+    const d = await userApi({ action: 'deleteUser', username: name });
+    if (d.status === 'ok') { toast('✅ ' + d.message); closeModal('modalUser'); loadUsers(); }
+    else toast('❌ ' + (d.message || 'Gagal menghapus'), 'err');
+  } catch (e) { if (e.message !== 'UNAUTHORIZED') toast('⚠️ Koneksi bermasalah, coba lagi', 'err'); }
+}
+
+// ==========================================
 // 9. OTOMATISASI SESI & REFRESH INTERVAL
 // ==========================================
 
@@ -2509,6 +2670,7 @@ function checkSession() {
     document.getElementById('menu-checker').style.display = ['admin', 'spv', 'checker'].includes(user.role) ? 'block' : 'none';
     document.getElementById('menu-tv').style.display = 'block';
     document.getElementById('menu-armada').style.display = 'block';
+      applyUserMenu();
     
     if (user.role === 'security' || user.role === 'checker') document.getElementById('f-secname').value = user.name;
     
